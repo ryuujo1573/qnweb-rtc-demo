@@ -2,12 +2,12 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 
 export interface IdentityState {
-  auth: 'unauth' | 'anonymous',
+  auth?: 'anonymous',
   nickname: string | null,
 }
 
 const initialState: IdentityState = {
-  auth: 'unauth',
+  auth: undefined,
   nickname: null
 }
 
@@ -23,9 +23,8 @@ export const identitySlice = createSlice({
         case 'anonymous':
           // haha
           state.nickname = null
-        case 'unauth':
+        case undefined:
           console.log('?');
-
       }
     }
   }

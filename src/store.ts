@@ -1,12 +1,14 @@
-import { configureStore } from "@reduxjs/toolkit";
-import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux'
-import settings from "./features/settingSlice";
+import { configureStore } from "@reduxjs/toolkit"
+import { useDispatch, useSelector, TypedUseSelectorHook } from "react-redux"
+import settings from "./features/settingSlice"
 import identity from "./features/identitySlice"
+import webrtc from "./features/webrtcSlice"
 
 export const store = configureStore({
   reducer: {
     settings,
     identity,
+    webrtc,
   },
 })
 

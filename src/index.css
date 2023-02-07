@@ -53,3 +53,7 @@ footer {
 
   color: grey;
 }
+
+.mirror {
+  transform: rotateY(180deg);
+}

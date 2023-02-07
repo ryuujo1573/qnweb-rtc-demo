@@ -1,6 +1,6 @@
 import { useMemo } from "react"
 import { useAppDispatch, useAppSelector } from "../store"
-import { changeTheme, selectTheme, ThemeCode } from "../features/settingSlice"
+import { setTheme, selectTheme, ThemeCode } from "../features/settingSlice"
 import { useTheme as useThemeVanilla } from "@mui/material"
 
 export function useTheme() {
@@ -15,10 +15,12 @@ export function useTheme() {
       this.current = mode;
       console.log('mode:', mode);
 
-      dispatch(changeTheme(mode));
+      dispatch(setTheme(mode));
     }
   }
 }
+
+export const checkRoomId = (v: string) => /^[0-9a-zA-Z_-]{3,64}$/.test(v)
 
 export function debounce(fn: Function, interval: number) {
   let timeout = -1

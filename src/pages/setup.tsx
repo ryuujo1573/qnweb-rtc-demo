@@ -1,10 +1,12 @@
 import { SettingsRounded, CloseRounded, LightModeRounded, SettingsBrightnessRounded, DarkModeRounded } from "@mui/icons-material"
-import { Box, IconButton, SwipeableDrawer, Typography, Divider, ToggleButtonGroup, ToggleButton, Link } from "@mui/material"
+import { Box, IconButton, SwipeableDrawer, Typography, Divider, ToggleButtonGroup, ToggleButton, Link, Snackbar, SnackbarProps, Alert } from "@mui/material"
 import QNRTC from "qnweb-rtc"
 import { ChangeEvent, useState } from "react"
-import { CustomTextField } from "../components"
+import { useNavigate } from 'react-router-dom'
+
+import { CustomTextField, VideoPreview } from "../components"
 import { useAppSelector } from "../store"
-import { useDebounce, useTheme } from "../utils"
+import { checkRoomId, useDebounce, useTheme } from "../utils"
 
 
 function SectionFragment(props: { title: string, children?: React.ReactNode }) {
@@ -14,12 +16,16 @@ function SectionFragment(props: { title: string, children?: React.ReactNode }) {
   </>
 }
 
-export default function () {
+export default function SetupPage() {
   const theme = useTheme()
   const { auth, nickname } = useAppSelector((s) => s.identity)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [connectById, setConnectById] = useState(true)
+  const [snackState, setSnackState] = useState<SnackbarProps>()
+  const handleSnackClose = () => setSnackState({ open: false })
+
+  const navigate = useNavigate()
 
   const toggleDrawerHandler =
     (toBe: 'on' | 'off') =>
@@ -36,12 +42,12 @@ export default function () {
         setDrawerOpen(toBe == 'on');
       };
 
-  const roomIdRegex = /^[0-9a-zA-Z_-]{3,64}$/
   const textChangeHandler = useDebounce((event: ChangeEvent<HTMLInputElement>) => {
-    const text = event.target.value
+    const roomId = event.target.value
 
-    if (text.length && !roomIdRegex.test(text)) {
+    if (roomId.length && !checkRoomId(roomId)) {
       console.error(event.target.value)
+      // todo: debounce changes and show error tints
     }
   }, 1500)
 
@@ -78,10 +84,11 @@ export default function () {
       >
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
           <Typography variant='h6' component={'span'}>设置</Typography>
-          <IconButton sx={{
-            lineHeight: 1,
-            marginLeft: 'auto'
-          }}><CloseRounded /></IconButton>
+          <IconButton
+            onClick={toggleDrawerHandler('off')}
+            sx={{
+              marginLeft: 'auto'
+            }}><CloseRounded /></IconButton>
         </Box>
         <Divider variant='fullWidth' />
         <SectionFragment title='主题模式'>
@@ -112,13 +119,13 @@ export default function () {
           </ToggleButtonGroup>
         </SectionFragment>
         <SectionFragment title='视频'>
-
+          <VideoPreview />
         </SectionFragment>
         <SectionFragment title='音频'>
 
         </SectionFragment>
         <SectionFragment title='关于'>
-          <Link href='https://www.qiniu.com/products/rtn' variant='body2'>🐮七牛云</Link>
+          <Link href='https://www.qiniu.com/products/rtn' variant='body2'>Qiniu 七牛云</Link>
         </SectionFragment>
       </SwipeableDrawer>
     </Box>
@@ -126,12 +133,24 @@ export default function () {
   </header>
     <main>
       <img src='/qiniu.svg' alt='logo' width={300} className='logo' />
+      <Snackbar
+        autoHideDuration={5000}
+        anchorOrigin={{ horizontal: 'center', vertical: 'top' }}
+        onClose={handleSnackClose}
+        {...snackState}
+      />
       <form
         onSubmit={(e) => {
           e.preventDefault()
-          const value = document.querySelector<HTMLInputElement>('#roomId')!.value
-          if (roomIdRegex.test(value))
-            alert(value)
+          const roomId = document.querySelector<HTMLInputElement>('#roomId')!.value
+          if (checkRoomId(roomId)) {
+            navigate('/room/' + roomId)
+          } else {
+            setSnackState({
+              open: true,
+              children: <Alert severity="error" onClose={handleSnackClose}>{"房间名限制3~64个字符，并且只能包含字母、数字或下划线"}</Alert>,
+            })
+          }
         }}
       >
         <CustomTextField
@@ -149,9 +168,9 @@ export default function () {
     </main>
     <footer>
       <Typography variant='body2' textAlign='center'>
-        DEMO VERSION: {import.meta.env.VITE_APP_VERSION}: {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}
+        DEMO VERSION: <b color={theme.palette.secondary.main}>{import.meta.env.VITE_APP_VERSION}: {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}</b>
         <br />
-        SDK VERSION: {QNRTC.VERSION}
+        SDK VERSION: <b color={theme.palette.secondary.main}>{QNRTC.VERSION}</b>
       </Typography>
     </footer>
   </>

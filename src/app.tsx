@@ -1,10 +1,28 @@
-import { createTheme, CssBaseline, PaletteOptions, ThemeProvider } from '@mui/material'
-import { blueGrey, grey, lightBlue } from '@mui/material/colors'
+import { Backdrop, createTheme, CssBaseline, PaletteOptions, ThemeProvider } from '@mui/material'
+import { blueGrey, grey, lightBlue, teal } from '@mui/material/colors'
 import { useEffect, useMemo, useState } from 'react'
+import {
+  createBrowserRouter,
+  RouterProvider
+} from "react-router-dom"
 
 import { selectTheme } from './features/settingSlice'
+import { RoomPage } from './pages'
+import ErrorPage from './pages/error'
 import Setup from './pages/setup'
 import { useAppSelector } from './store'
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <Setup />,
+    errorElement: <ErrorPage />,
+  },
+  {
+    path: "/room/:roomId",
+    element: <RoomPage />,
+  }
+])
 
 export const App = (props: {}) => {
   const [isDarkmode, toggleDarkmode] = useState(false)
@@ -13,19 +31,21 @@ export const App = (props: {}) => {
   const darkModePalette: PaletteOptions = {
     mode: 'dark',
     primary: blueGrey,
+    secondary: teal,
     text: {
       primary: grey[300],
       secondary: grey[500],
     },
     background: {
       default: grey[900],
-      paper: grey[900],
+      paper: grey[800],
     },
   }
 
   const lightModePalette: PaletteOptions = {
     mode: 'light',
     primary: lightBlue,
+    secondary: teal,
     text: {
       primary: grey[900],
       secondary: grey[800],
@@ -65,7 +85,7 @@ export const App = (props: {}) => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
-      <Setup />
+      <RouterProvider router={router} />
     </ThemeProvider>
   )
 }
