@@ -1,4 +1,4 @@
-import { Alert, Backdrop, createTheme, CssBaseline, PaletteOptions, Snackbar, SnackbarProps, ThemeProvider } from '@mui/material'
+import { Alert, createTheme, CssBaseline, PaletteOptions, Snackbar, ThemeProvider } from '@mui/material'
 import { blueGrey, grey, lightBlue, teal } from '@mui/material/colors'
 import { FC, useEffect, useMemo, useState } from 'react'
 import {
@@ -6,23 +6,27 @@ import {
   RouterProvider
 } from "react-router-dom"
 
-import { message, reset } from './features/messageSlice'
+import { reset } from './features/messageSlice'
 import { selectTheme } from './features/settingSlice'
-import { RoomPage } from './pages'
-import ErrorPage from './pages/error'
-import Setup from './pages/setup'
+import { ErrorPage, Layout, RoomPage, SetupPage } from './pages'
 import { useAppDispatch, useAppSelector } from './store'
 
 const router = createBrowserRouter([
   {
     path: '/',
-    element: <Setup />,
+    element: <Layout />,
     errorElement: <ErrorPage />,
+    children: [
+      {
+        path: "",
+        element: <SetupPage />,
+      },
+      {
+        path: "room/:roomId",
+        element: <RoomPage />,
+      }
+    ]
   },
-  {
-    path: "/room/:roomId",
-    element: <RoomPage />,
-  }
 ])
 
 export const App: FC = () => {
