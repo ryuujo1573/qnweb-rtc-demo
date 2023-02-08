@@ -1,16 +1,17 @@
-import { Backdrop, createTheme, CssBaseline, PaletteOptions, ThemeProvider } from '@mui/material'
+import { Alert, Backdrop, createTheme, CssBaseline, PaletteOptions, Snackbar, SnackbarProps, ThemeProvider } from '@mui/material'
 import { blueGrey, grey, lightBlue, teal } from '@mui/material/colors'
-import { useEffect, useMemo, useState } from 'react'
+import { FC, useEffect, useMemo, useState } from 'react'
 import {
   createBrowserRouter,
   RouterProvider
 } from "react-router-dom"
 
+import { message, reset } from './features/messageSlice'
 import { selectTheme } from './features/settingSlice'
 import { RoomPage } from './pages'
 import ErrorPage from './pages/error'
 import Setup from './pages/setup'
-import { useAppSelector } from './store'
+import { useAppDispatch, useAppSelector } from './store'
 
 const router = createBrowserRouter([
   {
@@ -24,9 +25,11 @@ const router = createBrowserRouter([
   }
 ])
 
-export const App = (props: {}) => {
+export const App: FC = () => {
+  // theme / darkmode
   const [isDarkmode, toggleDarkmode] = useState(false)
   const themeCode = useAppSelector(selectTheme)
+  const dispatch = useAppDispatch()
 
   const darkModePalette: PaletteOptions = {
     mode: 'dark',
@@ -82,9 +85,26 @@ export const App = (props: {}) => {
     }
   }, [themeCode])
 
+  // snackbar
+  const { message: msg, severity, ...snackBarProps } = useAppSelector(s => s.message.current) ?? {}
+
+  const handleSnackClose = () => dispatch(reset())
+  // const handleSnackClose = () => setSnackState({ open: false })
+  console.log(snackBarProps)
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
+      <Snackbar
+        autoHideDuration={5000} // override when `auto..` specified in action
+        anchorOrigin={{ horizontal: 'center', vertical: 'top' }}
+        onClose={handleSnackClose}
+        open={!!msg}
+        {...snackBarProps}
+        {...severity
+          ? { children: <Alert severity={severity}>{msg}</Alert> }
+          : { message: msg }}
+      />
       <RouterProvider router={router} />
     </ThemeProvider>
   )
