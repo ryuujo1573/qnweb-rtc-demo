@@ -1,12 +1,15 @@
-import { SettingsRounded, CloseRounded, LightModeRounded, SettingsBrightnessRounded, DarkModeRounded } from "@mui/icons-material"
-import { Box, IconButton, SwipeableDrawer, Typography, Divider, ToggleButtonGroup, ToggleButton, Link, Snackbar, SnackbarProps, Alert } from "@mui/material"
+import { CloseRounded, DarkModeRounded, LightModeRounded, SettingsBrightnessRounded, SettingsRounded } from "@mui/icons-material"
+import { Box, Divider, IconButton, Link, SwipeableDrawer, ToggleButton, ToggleButtonGroup, Typography, useTheme } from "@mui/material"
 import QNRTC from "qnweb-rtc"
 import { ChangeEvent, useState } from "react"
 import { useNavigate } from 'react-router-dom'
 
 import { CustomTextField, VideoPreview } from "../components"
-import { useAppSelector } from "../store"
-import { checkRoomId, useDebounce, useTheme } from "../utils"
+import { updateNickname } from "../features/identitySlice"
+import { error } from "../features/messageSlice"
+import { setTheme } from "../features/settingSlice"
+import { useAppDispatch, useAppSelector } from "../store"
+import { checkNickname, checkRoomId, useDebounce } from "../utils"
 
 
 function SectionFragment(props: { title: string, children?: React.ReactNode }) {
@@ -18,12 +21,14 @@ function SectionFragment(props: { title: string, children?: React.ReactNode }) {
 
 export default function SetupPage() {
   const theme = useTheme()
-  const { auth, nickname } = useAppSelector((s) => s.identity)
+  const { auth, nickname, themeCode } = useAppSelector((s) => ({
+    ...s.identity,
+    themeCode: s.settings.themeCode,
+  }))
+  const dispatch = useAppDispatch()
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [connectById, setConnectById] = useState(true)
-  const [snackState, setSnackState] = useState<SnackbarProps>()
-  const handleSnackClose = () => setSnackState({ open: false })
 
   const navigate = useNavigate()
 
@@ -51,6 +56,56 @@ export default function SetupPage() {
     }
   }, 1500)
 
+  const [newNickname, setNickname] = useState<string>()
+
+  const step1 = () => <form
+    onSubmit={e => {
+      e.preventDefault()
+      if (newNickname && checkNickname(newNickname)) {
+        dispatch(updateNickname(newNickname))
+      } else {
+        dispatch(error({ message: '昵称限制为2~24个字符' }))
+      }
+    }}
+  >
+    <CustomTextField key='nickname'
+      placeholder={'请输入昵称'}
+      name='roomid'
+      value={newNickname}
+      onChange={e => setNickname(e.target.value.trim())} />
+    <Link variant='body2' href="#" sx={{
+      display: 'block',
+      textAlign: 'end',
+      padding: 1
+    }} onClick={() => dispatch(updateNickname('admin'))}>{'演示 admin 账号?'}</Link>
+    <input type='submit' hidden />
+  </form>
+
+  const step2 = () => <form
+    onSubmit={(e) => {
+      e.preventDefault()
+      const roomId = (e.currentTarget.elements.namedItem('roomid') as HTMLInputElement).value
+      if (checkRoomId(roomId)) {
+        navigate('/room/' + roomId)
+      } else {
+        dispatch(error({
+          message: '房间名限制3~64个字符，并且只能包含字母、数字或下划线',
+        }))
+      }
+    }}
+  >
+    <CustomTextField key='roomid'
+      autoFocus
+      placeholder={connectById ? '请输入房间名' : '请输入 roomToken'}
+      name='roomid'
+      onChange={textChangeHandler} />
+    <Link variant='body2' href="#" underline='hover' sx={{
+      display: 'block',
+      textAlign: 'end',
+      padding: 1
+    }} onClick={() => setConnectById(!connectById)}>{connectById ? '使用 roomToken ?' : '使用房间名?'}</Link>
+    <input type='submit' hidden />
+  </form>
   return <><header>
     <Box sx={{
       marginInlineStart: 'auto',
@@ -99,12 +154,11 @@ export default function SetupPage() {
             }}
             color='primary'
             size='medium'
-            value={theme.current}
+            value={themeCode}
             exclusive
             onChange={(_, newValue) => {
               if (newValue == null) return
-              theme.change(newValue)
-              localStorage.setItem('color-theme', newValue)
+              dispatch(setTheme(newValue))
             }}
           >
             <ToggleButton value='light' aria-label='light mode'>
@@ -133,38 +187,7 @@ export default function SetupPage() {
   </header>
     <main>
       <img src='/qiniu.svg' alt='logo' width={300} className='logo' />
-      <Snackbar
-        autoHideDuration={5000}
-        anchorOrigin={{ horizontal: 'center', vertical: 'top' }}
-        onClose={handleSnackClose}
-        {...snackState}
-      />
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          const roomId = document.querySelector<HTMLInputElement>('#roomId')!.value
-          if (checkRoomId(roomId)) {
-            navigate('/room/' + roomId)
-          } else {
-            setSnackState({
-              open: true,
-              children: <Alert severity="error" onClose={handleSnackClose}>{"房间名限制3~64个字符，并且只能包含字母、数字或下划线"}</Alert>,
-            })
-          }
-        }}
-      >
-        <CustomTextField
-          placeholder={connectById ? '请输入房间名' : '请输入 roomToken'}
-          id='roomId'
-          onChange={textChangeHandler}
-        />
-        <Link variant='body2' underline='hover' sx={{
-          display: 'block',
-          textAlign: 'end',
-          padding: 1
-        }} onClick={() => setConnectById(!connectById)}>{connectById ? '使用 roomToken ?' : '使用房间名?'}</Link>
-        <input type='submit' hidden />
-      </form>
+      {auth ? step2() : step1()}
     </main>
     <footer>
       <Typography variant='body2' textAlign='center'>

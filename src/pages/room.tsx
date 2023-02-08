@@ -1,12 +1,13 @@
 import { CallEndRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material"
-import { Box, Button, IconButton, ToggleButton, Typography } from "@mui/material"
-import QNRTC, { QNCameraVideoTrack, QNConnectionDisconnectedInfo, QNConnectionState } from "qnweb-rtc"
+import { Box, Button, IconButton, ToggleButton, Typography, useTheme } from "@mui/material"
+import QNRTC, { QNConnectionDisconnectedInfo, QNConnectionState } from "qnweb-rtc"
 import { useEffect, useMemo, useState } from "react"
-import { useParams, useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
+
 import { client } from "../api"
 import { updateState } from "../features/webrtcSlice"
 import { useAppDispatch, useAppSelector } from "../store"
-import { checkRoomId, useTheme } from "../utils"
+import { checkRoomId } from "../utils"
 
 export default function RoomPage() {
   const { roomId } = useParams()
@@ -48,6 +49,7 @@ export default function RoomPage() {
 
       const userId = 'admin'
       await client.join(roomToken, userId)
+
       // const sessionToken = await fetch(`https://rtc.qiniuapi.com/v3/apps/${appId}/rooms/test/auth?user=${userId}&token=${roomToken}`
       const [audioTrack, videoTrack] = await tracksPromise
 
@@ -63,7 +65,14 @@ export default function RoomPage() {
 
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
+  }
 
+  const handleExit = () => {
+    client.leave().then(async () => {
+      const tracks = await tracksPromise
+      tracks.forEach(t => t.destroy())
+      // navigation(-1)
+    })
   }
 
   useEffect(() => {
@@ -95,7 +104,7 @@ export default function RoomPage() {
       <ToggleButton value={true} selected={state.mirror} onChange={() => {
         setState({ mirror: !state.mirror })
       }}><FlipRounded /></ToggleButton>
-      <Button variant="contained" color='error' onClick={() => navigation(-1)}><CallEndRounded /></Button>
+      <Button variant="contained" color='error' onClick={handleExit}><CallEndRounded /></Button>
     </main>
     <footer><Typography variant="body2">room: <b>{roomId}</b>, state: <b>{webrtcState.connectionState}</b></Typography></footer>
   </>

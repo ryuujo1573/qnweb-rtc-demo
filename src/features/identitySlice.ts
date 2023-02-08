@@ -2,12 +2,12 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 
 export interface IdentityState {
-  auth?: 'anonymous',
+  auth: 'anonymous' | null,
   nickname: string | null,
 }
 
 const initialState: IdentityState = {
-  auth: undefined,
+  auth: null,
   nickname: null
 }
 
@@ -15,13 +15,15 @@ export const identitySlice = createSlice({
   name: 'identity',
   initialState,
   reducers: {
-    changeNickname(state, { payload }: PayloadAction<string>) {
+    updateNickname(state, { payload }: PayloadAction<string>) {
+      state.auth = 'anonymous'
       state.nickname = payload
     },
     logout(state) {
       switch (state.auth) {
         case 'anonymous':
           // haha
+          state.auth = null
           state.nickname = null
         case undefined:
           console.log('?');
@@ -30,5 +32,5 @@ export const identitySlice = createSlice({
   }
 })
 
-export const { changeNickname, logout } = identitySlice.actions;
+export const { updateNickname, logout } = identitySlice.actions;
 export default identitySlice.reducer;
