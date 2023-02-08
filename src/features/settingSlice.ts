@@ -11,7 +11,7 @@ interface Settings {
 
 const initialState: Settings = {
   nickname: undefined,
-  themeCode: 'dark',
+  themeCode: localStorage.getItem('color-theme') as ThemeCode ?? 'dark',
   appId: 'd8lk7l4ed', // demo only
 }
 
@@ -22,6 +22,7 @@ export const settingSlice = createSlice({
     setNickname: (state, action: PayloadAction<string>) => { state.nickname = action.payload },
     setTheme: (state, { payload: code }: PayloadAction<ThemeCode>) => {
       state.themeCode = code
+      localStorage.setItem('color-theme', code)
     },
     setAppId: (state, { payload: appId }: PayloadAction<string>) => {
       state.appId = appId
