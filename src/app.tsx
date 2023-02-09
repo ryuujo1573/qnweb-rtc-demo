@@ -27,7 +27,10 @@ const router = createBrowserRouter([
       }
     ]
   },
-])
+], {
+  basename: import.meta.env['BASE_URL']
+})
+
 
 export const App: FC = () => {
   // theme / darkmode
@@ -93,8 +96,6 @@ export const App: FC = () => {
   const { message: msg, severity, ...snackBarProps } = useAppSelector(s => s.message.current) ?? {}
 
   const handleSnackClose = () => dispatch(reset())
-  // const handleSnackClose = () => setSnackState({ open: false })
-  console.log(snackBarProps)
 
   return (
     <ThemeProvider theme={theme}>
