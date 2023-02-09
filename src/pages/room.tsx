@@ -1,88 +1,96 @@
-import { CallEndRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material"
+import { CallEndRounded, CallRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material"
 import { Box, Button, IconButton, ToggleButton, Typography, useTheme } from "@mui/material"
 import QNRTC, { QNConnectionDisconnectedInfo, QNConnectionState } from "qnweb-rtc"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { client } from "../api"
-import { updateState } from "../features/webrtcSlice"
+import { success } from "../features/messageSlice"
+import { toggleMirror, updateState } from "../features/webrtcSlice"
 import { useAppDispatch, useAppSelector } from "../store"
 import { checkRoomId } from "../utils"
 
+const log = console.log
+
 export default function RoomPage() {
+  log(';render')
   const { roomId } = useParams()
-  const navigation = useNavigate()
+  const navigate = useNavigate()
   const theme = useTheme()
 
-  const dispatch = useAppDispatch()
-  const webrtcState = useAppSelector(s => s.webrtc)
-  const tracksPromise = useMemo(() => QNRTC.createMicrophoneAndCameraTracks(), [])
+  const boxRef = useRef<HTMLDivElement>(null)
 
-  const [state, _setState] = useState({
-    mirror: false,
-  })
-  const setState = (changes: Partial<typeof state>) => {
-    _setState({
-      ...state,
-      ...changes,
+  const dispatch = useAppDispatch()
+  const {
+    connectionState, facingMode, device, mirror
+  } = useAppSelector(s => s.webrtc)
+
+  const { nickname, auth } = useAppSelector(s => s.identity)
+  const { appId } = useAppSelector(s => s.settings)
+
+  // this takes 150ms+, cache for performance.
+  const tracksPromise = useMemo(() => QNRTC.createMicrophoneAndCameraTracks(), [])
+  // const tracksPromise = QNRTC.createMicrophoneAndCameraTracks()
+  const roomTokenPromise = useMemo(
+    () => fetch(`https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${nickname}?bundleId=demo-rtc.qnsdk.com`)
+      .then(resp => resp.text()),
+    [appId, roomId, nickname]
+  )
+
+  const startConnection = async () => {
+    log(';startConnection')
+    const roomToken = await roomTokenPromise
+    // Given the same name & id, it'll take < 0.02ms.
+
+    const [audioTrack, videoTrack] = await tracksPromise
+
+    await client.join(roomToken)
+    await client.publish(videoTrack)
+
+    dispatch(success({ message: '成功加入房间' }))
+  }
+
+  const stopConnection = async () => {
+    log(';stopConnection')
+    await client.leave().then(() => {
+      log(';stopConnection | leaved')
     })
   }
 
   useEffect(() => {
-    if (!roomId || !checkRoomId(roomId)) {
-      return navigation(-1)
+    log(';roomId useEffect:', roomId)
+    if (!roomId || !checkRoomId(roomId) || !nickname) {
+      return navigate(-1)
     }
 
-    // TODO: SDK auto typing.
-    const stateChangedHandler = (state: QNConnectionState, info?: QNConnectionDisconnectedInfo) => {
-      dispatch(updateState(state))
+    const promise = startConnection()
 
-      info && console.log(info)
-    }
-    client.addListener('connection-state-changed', stateChangedHandler)
-
-    // init tracks
-    const startConnection = async () => {
-      const appId = "d8lk7l4ed"
-      const roomToken = await (await fetch(`https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/test/user/admin?bundleId=demo-rtc.qnsdk.com`)).text()
-      console.log(roomToken);
-
-      const userId = 'admin'
-      await client.join(roomToken, userId)
-
-      // const sessionToken = await fetch(`https://rtc.qiniuapi.com/v3/apps/${appId}/rooms/test/auth?user=${userId}&token=${roomToken}`
-      const [audioTrack, videoTrack] = await tracksPromise
-
-      client.publish(videoTrack)
-      videoTrack.play(document.getElementById('videoBox')!)
-    }
-
-    startConnection()
     return () => {
-      client.removeListener('connection-state-changed', stateChangedHandler)
+      log(';roomId clearEffect:', roomId)
+      promise.then(stopConnection).finally(async () => {
+        const tracks = await tracksPromise
+        tracks.forEach(t => t.destroy())
+      })
     }
-  }, [roomId])
+  }, [])
 
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
 
-  const handleExit = () => {
-    client.leave().then(async () => {
-      const tracks = await tracksPromise
-      tracks.forEach(t => t.destroy())
-      // navigation(-1)
-    })
+  const promises = useRef<Promise<unknown>[]>([])
+  const handleCallButton = (connected: boolean) => async () => {
+    // connected ? *DISCONNECT* : *CONNECT*
+    await Promise.all(promises.current)
+    promises.current = [
+      !connected ? startConnection() : stopConnection()
+    ]
   }
 
-  useEffect(() => {
-    // (async () => {
-    //   const [audioTrack, videoTrack] = await tracksPromise
-    //   videoTrack.??
-    // })()
-    const box = document.getElementById('videoBox')!
-    box.classList.toggle('mirror')
-  }, [state.mirror])
+  tracksPromise.then(([audioTrack, videoTrack]) => {
+    log('box:', boxRef.current)
+    videoTrack.play(boxRef.current!, { mirror })
+  })
 
   return <>
     <Box component='aside' sx={{
@@ -93,19 +101,65 @@ export default function RoomPage() {
       backgroundColor: '#eeeeee20',
     }}
     >
-      <Typography variant='body1'>房间: {roomId}
-        <IconButton onClick={handleCopyInvitation}><ContentCopyRounded /></IconButton>
+      <Typography variant='caption' sx={{
+        display: 'flex',
+        alignItems: 'center',
+      }}>
+        <b>房间:&nbsp;</b>{roomId}
+        <Typography color={theme.palette.secondary.main} pl='1ch' fontWeight={700}>
+          {connectionState}
+        </Typography>
+        <IconButton onClick={handleCopyInvitation} sx={{
+          marginLeft: 'auto'
+        }}><ContentCopyRounded /></IconButton>
       </Typography>
+      <Box sx={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        columnGap: 1,
+      }}>
+        {...Object.entries({
+          '视频丢包率': '114514',
+          '音频丢包率': '0.00 %',
+          '屏幕分享丢包率': '0.00 %',
+          '视频实时码率': '459.19 kbps',
+          '音频实时码率': '22.11 kbps',
+          '屏幕分享实时码率': '0.00 kbps',
+        }).map(([k, v], i) => <>
+          <Typography key={`k${i}`} variant="body2" align="right" sx={{
+            fontWeight: 700,
+          }}>{k}</Typography>
+          <Typography key={`v${i}`} variant="body2" align="left">{v}</Typography>
+        </>)}
+      </Box>
     </Box>
     <main>
-      <Box id="videoBox" sx={{
-
+      <Box id="videoBox" ref={boxRef} sx={{
+        zIndex: -1,
       }} />
-      <ToggleButton value={true} selected={state.mirror} onChange={() => {
-        setState({ mirror: !state.mirror })
-      }}><FlipRounded /></ToggleButton>
-      <Button variant="contained" color='error' onClick={handleExit}><CallEndRounded /></Button>
     </main>
-    <footer><Typography variant="body2">room: <b>{roomId}</b>, state: <b>{webrtcState.connectionState}</b></Typography></footer>
+    <footer>
+      <ToolBar />
+    </footer>
   </>
+
+  function ToolBar() {
+    const connected = connectionState == QNConnectionState.CONNECTED
+    return <Box sx={{
+      position: 'fixed',
+      bottom: '1ch'
+    }}>
+      <ToggleButton value={true} selected={mirror} onChange={() => {
+        dispatch(toggleMirror(!mirror))
+      }}><FlipRounded /></ToggleButton>
+      <Button
+        variant="contained"
+        color={connected ? 'error' : 'success'}
+        onClick={handleCallButton(connected)}
+        disabled={connectionState == QNConnectionState.CONNECTING}
+      >
+        {connected ? <CallEndRounded key='CallEndRounded' /> : <CallRounded key='CallRounded' />}
+      </Button>
+    </Box>
+  }
 }

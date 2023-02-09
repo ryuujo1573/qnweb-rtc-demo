@@ -1,14 +1,16 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
 
+type AllAuth = 'anonymous';
+
 export interface IdentityState {
-  auth: 'anonymous' | null,
+  auth: AllAuth | null,
   nickname: string | null,
 }
 
 const initialState: IdentityState = {
-  auth: null,
-  nickname: null
+  auth: localStorage.getItem('auth') as unknown as IdentityState['auth'],
+  nickname: localStorage.getItem('nickname'),
 }
 
 export const identitySlice = createSlice({

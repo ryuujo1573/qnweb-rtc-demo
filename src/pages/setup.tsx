@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { CustomTextField } from "../components"
 import { updateNickname } from "../features/identitySlice"
 import { error } from "../features/messageSlice"
+import { fetchDeviceInfo } from "../features/webrtcSlice"
 import { useAppDispatch, useAppSelector } from "../store"
 import { checkNickname, checkRoomId, useDebounce } from "../utils"
 
@@ -28,9 +29,9 @@ export default function SetupPage() {
     }
   }, 1500)
 
-  const [newNickname, setNickname] = useState<string>()
+  const [newNickname, setNickname] = useState('')
 
-  const step1 = () => <form
+  const step1 = () => <form key='nickname'
     onSubmit={e => {
       e.preventDefault()
       if (newNickname && checkNickname(newNickname)) {
@@ -40,7 +41,7 @@ export default function SetupPage() {
       }
     }}
   >
-    <CustomTextField key='nickname'
+    <CustomTextField
       placeholder={'请输入昵称'}
       name='roomid'
       value={newNickname}
@@ -53,11 +54,13 @@ export default function SetupPage() {
     <input type='submit' hidden />
   </form>
 
-  const step2 = () => <form
+  const step2 = () => <form key='roomid'
     onSubmit={(e) => {
       e.preventDefault()
       const roomId = (e.currentTarget.elements.namedItem('roomid') as HTMLInputElement).value
       if (checkRoomId(roomId)) {
+        dispatch(fetchDeviceInfo())
+        alert('ready?')
         navigate('/room/' + roomId)
       } else {
         dispatch(error({
@@ -66,7 +69,7 @@ export default function SetupPage() {
       }
     }}
   >
-    <CustomTextField key='roomid'
+    <CustomTextField
       autoFocus
       placeholder={connectById ? '请输入房间名' : '请输入 roomToken'}
       name='roomid'
@@ -78,9 +81,11 @@ export default function SetupPage() {
     }} onClick={() => setConnectById(!connectById)}>{connectById ? '使用 roomToken ?' : '使用房间名?'}</Link>
     <input type='submit' hidden />
   </form>
+
+
   return <><header>
     gone~
-  </header>
+  </header >
     <main>
       <img src='/qiniu.svg' alt='logo' width={300} className='logo' />
       {auth ? step2() : step1()}
