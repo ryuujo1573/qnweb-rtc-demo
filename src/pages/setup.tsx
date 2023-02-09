@@ -87,7 +87,7 @@ export default function SetupPage() {
     gone~
   </header >
     <main>
-      <img src='/qiniu.svg' alt='logo' width={300} className='logo' />
+      <img src='qiniu.svg' alt='logo' width={300} className='logo' />
       {auth ? step2() : step1()}
     </main>
     <footer>
