@@ -60,7 +60,6 @@ export default function SetupPage() {
       const roomId = (e.currentTarget.elements.namedItem('roomid') as HTMLInputElement).value
       if (checkRoomId(roomId)) {
         dispatch(fetchDeviceInfo())
-        alert('ready?')
         navigate('/room/' + roomId)
       } else {
         dispatch(error({
@@ -82,20 +81,10 @@ export default function SetupPage() {
     <input type='submit' hidden />
   </form>
 
-
-  return <><header>
-    gone~
-  </header >
+  return <>
     <main>
       <img src='qiniu.svg' alt='logo' width={300} className='logo' />
       {auth ? step2() : step1()}
     </main>
-    <footer>
-      <Typography variant='body2' textAlign='center'>
-        DEMO VERSION: <b color={theme.palette.secondary.main}>{import.meta.env.VITE_APP_VERSION}: {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}</b>
-        <br />
-        SDK VERSION: <b color={theme.palette.secondary.main}>{QNRTC.VERSION}</b>
-      </Typography>
-    </footer>
   </>
 }

@@ -5,9 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "VITE_APP_BUILD_TIME=$(date) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite",
-    "build": "VITE_APP_BUILD_TIME=$(date) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) tsc && vite build",
-    "preview": "VITE_APP_BUILD_TIME=$(date) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite preview"
+    "dev": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite",
+    "build": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) tsc && vite build",
+    "preview": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.10.5",

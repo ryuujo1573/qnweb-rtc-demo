@@ -1,11 +1,13 @@
 import { CloseRounded, DarkModeRounded, LightModeRounded, SettingsBrightnessRounded, SettingsRounded } from '@mui/icons-material'
 import { Box, Divider, IconButton, Link, SwipeableDrawer, ToggleButton, ToggleButtonGroup, Typography, useTheme } from '@mui/material'
+import QNRTC from 'qnweb-rtc'
 import { useState } from 'react'
 import { Outlet } from 'react-router'
 
 import { VideoPreview } from '../components'
 import { setTheme } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
+import { getPassedTimeDesc } from '../utils'
 
 
 function SectionFragment(props: { title: string, children?: React.ReactNode }) {
@@ -35,6 +37,8 @@ export default function Layout() {
         }
         setDrawerOpen(toBe == 'on')
       }
+
+  const buildDate = new Date(parseInt(import.meta.env.VITE_APP_BUILD_TIME) * 1000)
 
   return <>
     <Outlet />
@@ -112,6 +116,13 @@ export default function Layout() {
 
         </SectionFragment>
         <SectionFragment title='关于'>
+          <Typography variant='body2' textAlign='left'>
+            DEMO VERSION: <b color={theme.palette.secondary.main}>{import.meta.env.VITE_APP_VERSION}: {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}</b>
+            <br />
+            SDK VERSION: <b color={theme.palette.secondary.main}>{QNRTC.VERSION}</b>
+            <br />
+            BUILD TIME: <b>{buildDate.toLocaleString()}</b> ({getPassedTimeDesc(buildDate)})
+          </Typography>
           <Link href='https://www.qiniu.com/products/rtn' variant='body2'>Qiniu 七牛云</Link>
         </SectionFragment>
       </SwipeableDrawer>

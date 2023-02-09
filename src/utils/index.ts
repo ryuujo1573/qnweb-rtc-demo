@@ -1,4 +1,9 @@
 import { useMemo } from "react"
+import { getPassedTimeDesc } from './datetime'
+
+export {
+  getPassedTimeDesc
+}
 
 export const checkNickname = (v: string) => /^\w{1,24}$/.test(v)
 
