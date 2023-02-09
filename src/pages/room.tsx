@@ -1,86 +1,86 @@
-import { CallEndRounded, CallRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material";
-import { Box, Button, IconButton, ToggleButton, Typography, useTheme } from "@mui/material";
-import QNRTC, { QNConnectionDisconnectedInfo, QNConnectionState, QNLocalTrack } from "qnweb-rtc";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { CallEndRounded, CallRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material"
+import { Box, Button, IconButton, ToggleButton, Typography, useTheme } from "@mui/material"
+import QNRTC, { QNConnectionDisconnectedInfo, QNConnectionState, QNLocalTrack } from "qnweb-rtc"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
 
-import { client } from "../api";
-import { success } from "../features/messageSlice";
-import { toggleMirror, updateState } from "../features/webrtcSlice";
-import { useAppDispatch, useAppSelector } from "../store";
-import { checkRoomId } from "../utils";
+import { client } from "../api"
+import { success } from "../features/messageSlice"
+import { toggleMirror, updateState } from "../features/webrtcSlice"
+import { useAppDispatch, useAppSelector } from "../store"
+import { checkRoomId } from "../utils"
 
-const log = console.log;
+const log = console.log
 
 export default function RoomPage() {
-  log(";render");
-  const { roomId } = useParams();
-  const navigate = useNavigate();
-  const theme = useTheme();
+  log("render")
+  const { roomId } = useParams()
+  const navigate = useNavigate()
+  const theme = useTheme()
 
-  const boxRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null)
 
-  const dispatch = useAppDispatch();
-  const { connectionState, facingMode, device, mirror } = useAppSelector((s) => s.webrtc);
+  const dispatch = useAppDispatch()
+  const { connectionState, facingMode, device, mirror } = useAppSelector((s) => s.webrtc)
 
-  const microphoneAndCameraTracks = useRef<QNLocalTrack[]>([]);
-  const roomToken = useRef("");
-  const { nickname, auth } = useAppSelector((s) => s.identity);
+  const microphoneAndCameraTracks = useRef<QNLocalTrack[]>([])
+  const roomToken = useRef("")
+  const { nickname, auth } = useAppSelector((s) => s.identity)
 
-  const { appId } = useAppSelector((s) => s.settings);
+  const { appId } = useAppSelector((s) => s.settings)
 
   const startConnection = async () => {
-    log(";startConnection");
+    log("startConnection")
 
-    await client.join(roomToken.current);
-    await client.publish(microphoneAndCameraTracks.current);
+    await client.join(roomToken.current)
+    await client.publish(microphoneAndCameraTracks.current)
 
-    dispatch(success({ message: "成功加入房间" }));
-  };
+    dispatch(success({ message: "成功加入房间" }))
+  }
 
   const stopConnection = async () => {
-    log(";stopConnection");
-    await client.leave();
-    log(";stopConnection | leaved");
-  };
+    log("stopConnection")
+    await client.leave()
+    log("stopConnection | leaved")
+  }
 
   useEffect(() => {
     (async () => {
-      log(";roomId useEffect:", roomId);
+      log("roomId useEffect:", roomId)
       if (!roomId || !checkRoomId(roomId) || !nickname) {
-        return navigate(-1);
+        return navigate(-1)
       }
 
       roomToken.current = await fetch(
         `https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${nickname}?bundleId=demo-rtc.qnsdk.com`
-      ).then((resp) => resp.text());
+      ).then((resp) => resp.text())
 
       // this takes 150ms+, cache for performance.
-      const tracks = await QNRTC.createMicrophoneAndCameraTracks();
-      microphoneAndCameraTracks.current = tracks;
-      tracks.forEach((track) => track.isVideo() && boxRef.current && track.play(boxRef.current, { mirror }));
+      const tracks = await QNRTC.createMicrophoneAndCameraTracks()
+      microphoneAndCameraTracks.current = tracks
+      tracks.forEach((track) => track.isVideo() && boxRef.current && track.play(boxRef.current, { mirror }))
 
-      await startConnection();
+      await startConnection()
 
       return async () => {
-        log(";roomId clearEffect:", roomId);
-        await stopConnection();
-        tracks.forEach((track) => track.destroy);
-      };
-    })();
-  }, []);
+        log("roomId clearEffect:", roomId)
+        await stopConnection()
+        tracks.forEach((track) => track.destroy)
+      }
+    })()
+  }, [])
 
   useEffect(() => {
-    microphoneAndCameraTracks.current && microphoneAndCameraTracks.current.forEach((track) => track.isVideo() && boxRef.current && track.play(boxRef.current, { mirror }));
+    microphoneAndCameraTracks.current && microphoneAndCameraTracks.current.forEach((track) => track.isVideo() && boxRef.current && track.play(boxRef.current, { mirror }))
   }, [mirror])
 
   const handleCopyInvitation = () => {
-    navigator.clipboard.writeText(window.location.href);
-  };
+    navigator.clipboard.writeText(window.location.href)
+  }
   
   const handleCallButton = (connected: boolean) => async () => {
     !connected ? startConnection() : stopConnection()
-  };
+  }
 
   return (
     <>
@@ -101,7 +101,7 @@ export default function RoomPage() {
             alignItems: "center",
           }}
         >
-          <b>房间:&nbsp;</b>
+          <b>房间:&nbsp</b>
           {roomId}
           <Typography color={theme.palette.secondary.main} pl="1ch" fontWeight={700}>
             {connectionState}
@@ -161,10 +161,10 @@ export default function RoomPage() {
         <ToolBar />
       </footer>
     </>
-  );
+  )
 
   function ToolBar() {
-    const connected = connectionState == QNConnectionState.CONNECTED;
+    const connected = connectionState == QNConnectionState.CONNECTED
     return (
       <Box
         sx={{
@@ -176,7 +176,7 @@ export default function RoomPage() {
           value={true}
           selected={mirror}
           onChange={() => {
-            dispatch(toggleMirror(!mirror));
+            dispatch(toggleMirror(!mirror))
           }}
         >
           <FlipRounded />
@@ -190,6 +190,6 @@ export default function RoomPage() {
           {connected ? <CallEndRounded key="CallEndRounded" /> : <CallRounded key="CallRounded" />}
         </Button>
       </Box>
-    );
+    )
   }
 }
