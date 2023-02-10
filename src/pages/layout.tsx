@@ -1,4 +1,4 @@
-import { CloseRounded, DarkModeRounded, LightModeRounded, SettingsBrightnessRounded, SettingsRounded } from '@mui/icons-material'
+import { CloseRounded, DarkModeRounded, FlipRounded, LightModeRounded, SettingsBrightnessRounded, SettingsRounded } from '@mui/icons-material'
 import { Box, Divider, IconButton, Link, SwipeableDrawer, ToggleButton, ToggleButtonGroup, Typography, useTheme } from '@mui/material'
 import QNRTC from 'qnweb-rtc'
 import { useState } from 'react'
@@ -6,6 +6,7 @@ import { Outlet } from 'react-router'
 
 import { VideoPreview } from '../components'
 import { setTheme } from '../features/settingSlice'
+import { toggleMirror } from '../features/webrtcSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { getPassedTimeDesc } from '../utils'
 
@@ -21,6 +22,7 @@ export default function Layout() {
   const theme = useTheme()
   const dispatch = useAppDispatch()
   const { themeCode } = useAppSelector(s => s.settings)
+  const mirror = useAppSelector(s => s.webrtc.mirror)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -111,6 +113,9 @@ export default function Layout() {
         </SectionFragment>
         <SectionFragment title='视频'>
           <VideoPreview />
+          <ToggleButton value={true} selected={mirror} onChange={() => {
+            dispatch(toggleMirror(!mirror))
+          }}><FlipRounded /></ToggleButton>
         </SectionFragment>
         <SectionFragment title='音频'>
 

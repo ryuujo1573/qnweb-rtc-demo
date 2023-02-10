@@ -1,13 +1,12 @@
-import { CallEndRounded, CallRounded, ContentCopyRounded, FlipRounded } from "@mui/icons-material"
-import { Box, Button, IconButton, ToggleButton, Typography, useTheme } from "@mui/material"
-import QNRTC, { QNConnectionDisconnectedInfo, QNConnectionState } from "qnweb-rtc"
-import { MouseEventHandler, useEffect, useMemo, useRef, useState } from "react"
+import { CallEndRounded, CallRounded, VideocamRounded } from "@mui/icons-material"
+import { Box, Button, IconButton, useTheme } from "@mui/material"
+import QNRTC, { QNConnectionState } from "qnweb-rtc"
+import { MouseEventHandler, useEffect, useMemo, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { client } from "../api"
 import { DetailPanel } from "../components"
 import { success } from "../features/messageSlice"
-import { toggleMirror, updateState } from "../features/webrtcSlice"
 import { useAppDispatch, useAppSelector } from "../store"
 import { checkRoomId } from "../utils"
 
@@ -92,9 +91,12 @@ export default function RoomPage() {
     }
   }
 
-  tracksPromise.then(([audioTrack, videoTrack]) => {
-    videoTrack.play(boxRef.current!, { mirror })
-  })
+  useEffect(() => {
+    tracksPromise.then(([audioTrack, videoTrack]) => {
+      videoTrack.play(boxRef.current!, { mirror })
+      verbose(';play videoTrack')
+    })
+  }, [mirror])
 
   return <>
     <DetailPanel roomId={roomId!} connectionState={connectionState} />
@@ -114,9 +116,6 @@ export default function RoomPage() {
       position: 'fixed',
       bottom: '1ch'
     }}>
-      <ToggleButton value={true} selected={mirror} onChange={() => {
-        dispatch(toggleMirror(!mirror))
-      }}><FlipRounded /></ToggleButton>
       <Button
         variant="contained"
         color={connected ? 'error' : 'success'}
@@ -125,6 +124,9 @@ export default function RoomPage() {
       >
         {connected ? <CallEndRounded key='CallEndRounded' /> : <CallRounded key='CallRounded' />}
       </Button>
+      <IconButton>
+        <VideocamRounded />
+      </IconButton>
     </Box>
   }
 }
