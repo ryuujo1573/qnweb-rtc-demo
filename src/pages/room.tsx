@@ -1,11 +1,11 @@
 import { CallEndRounded, CallRounded, VideocamRounded } from "@mui/icons-material"
 import { Box, Button, IconButton, useTheme } from "@mui/material"
 import QNRTC, { QNConnectionState } from "qnweb-rtc"
-import { MouseEventHandler, useEffect, useMemo, useRef } from "react"
+import { MouseEventHandler, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
-import { client } from "../api"
-import { DetailPanel } from "../components"
+import { client, QNExternalStore } from "../api"
+import { DetailPanel, VideoPreviewRemote } from "../components"
 import { success } from "../features/messageSlice"
 import { useAppDispatch, useAppSelector } from "../store"
 import { checkRoomId } from "../utils"
@@ -21,11 +21,14 @@ export default function RoomPage() {
 
   const dispatch = useAppDispatch()
   const {
-    connectionState, facingMode, device, mirror
+    facingMode, device, mirror
   } = useAppSelector(s => s.webrtc)
 
   const { nickname, auth } = useAppSelector(s => s.identity)
   const { appId } = useAppSelector(s => s.settings)
+
+  const { pinnedVisualTrack, roomMembers, connectionState } =
+    useSyncExternalStore(QNExternalStore.subscribe, QNExternalStore.getSnapshot)
 
   // this takes 150ms+, cache for performance.
   const tracksPromise = useMemo(() => QNRTC.createMicrophoneAndCameraTracks(), [])
@@ -98,17 +101,41 @@ export default function RoomPage() {
     })
   }, [mirror])
 
-  return <>
-    <DetailPanel roomId={roomId!} connectionState={connectionState} />
-    <main>
-      <Box id="videoBox" ref={boxRef} sx={{
-        zIndex: -1,
-      }} />
-    </main>
-    <footer>
-      <ToolBar />
-    </footer>
-  </>
+  return (
+    <>
+      <DetailPanel roomId={roomId!} connectionState={connectionState} />
+      <header>
+        <Box
+          sx={{
+            display: 'flex',
+            position: 'fixed',
+            zIndex: 0,
+            top: '0',
+            width: '100%',
+            bgcolor: '#aaaaaa10',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {roomMembers.map((user) => {
+            return <VideoPreviewRemote key={user.userID} track={user.getVideoTracks()[0]} />
+          })}
+        </Box>
+      </header>
+      <main>
+        <Box
+          id="videoBox"
+          ref={boxRef}
+          sx={{
+            zIndex: -1,
+          }}
+        />
+      </main>
+      <footer>
+        <ToolBar />
+      </footer>
+    </>
+  )
 
   function ToolBar() {
     const connected = connectionState == QNConnectionState.CONNECTED
