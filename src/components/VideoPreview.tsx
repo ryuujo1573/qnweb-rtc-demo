@@ -1,65 +1,83 @@
-import { PlayArrowRounded, Stop } from "@mui/icons-material"
-import { Box, Grow, IconButton, Link, Typography, useTheme } from "@mui/material"
-import { grey } from "@mui/material/colors"
-import QNRTC, { QNCameraVideoTrack } from "qnweb-rtc"
-import { FC, useEffect, useState } from "react"
+import { FlipRounded, PlayArrowRounded } from '@mui/icons-material'
+import {
+  Box,
+  IconButton,
+  ToggleButton,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import { grey } from '@mui/material/colors'
+import QNRTC, { QNLocalVideoTrack } from 'qnweb-rtc'
+import { useEffect, useRef, useState } from 'react'
 
 export interface VideoPreviewProps {
-  autoplay?: boolean,
+  autoplay?: boolean
 }
 
-const VideoPreview: FC<VideoPreviewProps> = ({ autoplay }) => {
+const VideoPreview = ({ autoplay }: VideoPreviewProps) => {
   const [mirror, setMirror] = useState(true)
 
-  const [currentTrack, setTrack] = useState<QNCameraVideoTrack>()
-  const shouldPlay = autoplay || currentTrack != undefined
+  const boxRef = useRef<HTMLDivElement>()
+  const [track, setTrack] = useState<QNLocalVideoTrack>()
+
+  const shouldPlay = autoplay || track != undefined
   const theme = useTheme()
 
   useEffect(() => {
-    if (currentTrack) {
-      const div = document.getElementById('videoPreview')!
-      currentTrack.play(div, { mirror })
-      return () => {
-        currentTrack.destroy()
+    console.log('## recreate')
+    QNRTC.createCameraVideoTrack().then(setTrack)
+  }, [])
+
+  useEffect(() => {
+    if (boxRef.current) {
+      if (track) {
+        track.play(boxRef.current, { mirror: false })
+        return () => {
+          track.destroy()
+        }
       }
     }
-  }, [currentTrack])
+  }, [boxRef.current, track])
 
-  const initTrack = () => {
-    QNRTC.createCameraVideoTrack().then(track => {
-      setTrack(track)
-    })
-  }
-
-  return <>
-    <Box id='videoPreview' sx={{
-      position: 'relative',
-      width: '280px',
-      height: '180px',
-      display: 'flex',
-      background: grey[400],
-    }}>
-      <Typography variant="body2"
+  return (
+    <>
+      <Box
+        {...(mirror ? { className: 'mirror' } : undefined)}
+        ref={boxRef}
         sx={{
-          position: "absolute",
-          bottom: 'calc(-1rem - 5px)',
+          position: 'relative',
+          width: '280px',
+          height: '180px',
+          display: 'flex',
+          background: grey[400],
         }}
-      >{currentTrack?.getMediaStreamTrack()?.label}
-      </Typography>
-      {shouldPlay ? undefined :
-        <IconButton
-          onClick={() => initTrack()}
-          sx={{ margin: 'auto' }}
+      >
+        <Typography
+          variant="body2"
+          sx={{
+            position: 'absolute',
+            bottom: 'calc(-1rem - 5px)',
+          }}
         >
-          <PlayArrowRounded />
-        </IconButton>}
-    </Box>
-    {shouldPlay ? <Grow appear>
-      <Box>
-        <IconButton onClick={() => setTrack(undefined)}><Stop /></IconButton>
+          {track?.getMediaStreamTrack()?.label}
+        </Typography>
+        {shouldPlay ? undefined : (
+          <IconButton onClick={() => {}} sx={{ margin: 'auto' }}>
+            <PlayArrowRounded />
+          </IconButton>
+        )}
       </Box>
-    </Grow> : undefined}
-  </>
+      <ToggleButton
+        value={true}
+        selected={mirror}
+        onChange={() => {
+          setMirror(!mirror)
+        }}
+      >
+        <FlipRounded />
+      </ToggleButton>
+    </>
+  )
 }
 
 export default VideoPreview

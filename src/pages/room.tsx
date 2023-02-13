@@ -1,14 +1,31 @@
-import { CallEndRounded, CallRounded, VideocamRounded } from "@mui/icons-material"
-import { Box, Button, IconButton, useTheme } from "@mui/material"
-import QNRTC, { QNConnectionState } from "qnweb-rtc"
-import { MouseEventHandler, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
-import { useNavigate, useParams } from "react-router-dom"
+import {
+  CallEndRounded,
+  MicOffRounded,
+  MicRounded,
+  RestartAltRounded,
+  VideocamOffRounded,
+  VideocamRounded,
+} from '@mui/icons-material'
+import { Box, Button, IconButton, useTheme } from '@mui/material'
+import QNRTC, { QNConnectionState, QNLocalTrack } from 'qnweb-rtc'
+import {
+  MouseEventHandler,
+  startTransition,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+  useState,
+  useDebugValue,
+  useCallback,
+  Fragment,
+} from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 
-import { client, QNExternalStore } from "../api"
-import { DetailPanel, VideoPreviewRemote } from "../components"
-import { success } from "../features/messageSlice"
-import { useAppDispatch, useAppSelector } from "../store"
-import { checkRoomId } from "../utils"
+import { Client, getRoomToken } from '../api'
+import { DetailPanel, VideoBox } from '../components'
+import { useAppDispatch, useAppSelector } from '../store'
+import { checkRoomId } from '../utils'
 
 const verbose = console.log
 
@@ -17,90 +34,112 @@ export default function RoomPage() {
   const navigate = useNavigate()
   const theme = useTheme()
 
-  const boxRef = useRef<HTMLDivElement>(null)
-
   const dispatch = useAppDispatch()
-  const {
-    facingMode, device, mirror
-  } = useAppSelector(s => s.webrtc)
 
-  const { nickname, auth } = useAppSelector(s => s.identity)
-  const { appId } = useAppSelector(s => s.settings)
+  const { userId, auth } = useAppSelector((s) => s.identity)
+  const { mirror, facingMode } = useAppSelector((s) => s.settings)
 
-  const { pinnedVisualTrack, roomMembers, connectionState } =
-    useSyncExternalStore(QNExternalStore.subscribe, QNExternalStore.getSnapshot)
+  const { pinnedVisualTrack, roomMembers, connectionState, localTracks } =
+    useSyncExternalStore(Client.register, Client.getSnapshot)
 
-  // this takes 150ms+, cache for performance.
-  const tracksPromise = useMemo(() => QNRTC.createMicrophoneAndCameraTracks(), [])
-  // const tracksPromise = QNRTC.createMicrophoneAndCameraTracks()
-  const roomTokenPromise = useMemo(
-    () => fetch(`https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${nickname}?bundleId=demo-rtc.qnsdk.com`)
-      .then(resp => resp.text()),
-    [appId, roomId, nickname]
-  )
+  const isConnected = () => connectionState == QNConnectionState.CONNECTED
 
-  const startConnection = async () => {
-    verbose(';startConnection')
-    const roomToken = await roomTokenPromise
-    // Given the same name & id, it'll take < 0.02ms.
+  const videoTrack = localTracks.find((t) => t.isVideo())
+  const audioTrack = localTracks.find((t) => t.isAudio())
 
-    const [audioTrack, videoTrack] = await tracksPromise
+  const [roomToken, setRoomToken] = useState<string>()
 
-    await client.join(roomToken)
-    await client.publish(videoTrack)
-
-    dispatch(success({ message: '成功加入房间' }))
-    console.timeEnd('useEffect')
-  }
-
-  const stopConnection = async () => {
-    verbose(';stopConnection')
-    await client.leave().then(() => {
-      verbose(';stopConnection | leaved')
-    })
-  }
-
+  // identity -> roomToken
   useEffect(() => {
-    verbose(';useEffect:', roomId)
-    console.time('useEffect')
-    if (!roomId || !checkRoomId(roomId) || !nickname) {
-      return navigate(-1)
+    // check validity
+    if (!roomId || !checkRoomId(roomId) || !userId) {
+      return navigate('/')
     }
 
-    const promise = startConnection()
+    getRoomToken(roomId, userId).then(setRoomToken)
+  }, [roomId, userId])
+
+  // roomToken -> (connect) connectionState
+  useEffect(() => {
+    if (!roomToken) return
+    const promise = Client.connect(roomToken)
 
     return () => {
-      verbose(';clearEffect:', roomId)
-      console.time('clearEffect')
-      promise.then(stopConnection).finally(async () => {
-        const tracks = await tracksPromise
-        tracks.forEach(t => t.destroy())
-        console.timeEnd('clearEffect')
+      if (isConnected()) {
+        promise.then(Client.disconnect)
+      }
+    }
+  }, [roomToken])
+
+  // [connectionState, localTracks] -> (publish)
+  useEffect(() => {
+    const promise = (async () => {
+      if (isConnected()) {
+        Client.publish(localTracks)
+      }
+    })()
+
+    return () => {
+      promise.finally(async () => {
+        // unpublish the old ones
+        if (isConnected()) {
+          await Client.unpublish(localTracks)
+        }
       })
     }
-  }, [roomId])
+  }, [connectionState, localTracks])
 
+  // roomMembers -> (subscribe) -- allTracks
+  useEffect(() => {
+    const promise = (async () => {
+      console.time('subscribe allTracks')
+      const allTracks = roomMembers.flatMap((user) => [
+        ...user.getAudioTracks(),
+        ...user.getVideoTracks(),
+      ])
+      console.log('allTracks', allTracks)
+      await Client.subscribe(allTracks)
+      console.timeEnd('subscribe allTracks')
+      return allTracks
+    })()
+
+    return () => {
+      promise.then(async (allTracks) => {
+        if (isConnected()) await Client.unsubscribe(allTracks)
+      })
+    }
+  }, [roomMembers])
+
+  // TODO: throttle
   const onCallButtonClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    if (connectionState == QNConnectionState.CONNECTED) {
-      stopConnection()
-      const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent) ? 'metaKey' : 'ctrlKey'
+    if (isConnected()) {
+      Client.disconnect()
+      const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
+        ? 'metaKey'
+        : 'ctrlKey'
       // if click whilst holding ctrl/cmd key,
       // the page won't navigate on dev purpose.
       if (!evt[modKey]) {
-        navigate(-1)
+        navigate('/')
       }
-    } else if (connectionState == QNConnectionState.DISCONNECTED) {
-      startConnection()
+    } else if (roomToken) {
+      Client.connect(roomToken)
     }
   }
 
   useEffect(() => {
-    tracksPromise.then(([audioTrack, videoTrack]) => {
-      videoTrack.play(boxRef.current!, { mirror })
-      verbose(';play videoTrack')
-    })
-  }, [mirror])
+    if (videoTrack) {
+      verbose(';publish', videoTrack)
+      Client.publish(videoTrack)
+    }
+    if (audioTrack) {
+      verbose(';publish', audioTrack)
+      Client.publish(audioTrack)
+    }
+  }, [videoTrack, audioTrack])
 
+  const [micMuted, setMicMuted] = useState(audioTrack?.isMuted())
+  const [camMuted, setCamMuted] = useState(videoTrack?.isMuted())
   return (
     <>
       <DetailPanel roomId={roomId!} connectionState={connectionState} />
@@ -114,22 +153,40 @@ export default function RoomPage() {
             width: '100%',
             bgcolor: '#aaaaaa10',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
           }}
         >
-          {roomMembers.map((user) => {
-            return <VideoPreviewRemote key={user.userID} track={user.getVideoTracks()[0]} />
+          {roomMembers.map((user, i) => {
+            const tracks = user.getVideoTracks()
+            if (tracks.length) {
+              const firstTrack = tracks.shift()!
+              return (
+                <Fragment key={i}>
+                  <VideoBox
+                    key={user.userID}
+                    videoTrack={firstTrack}
+                    audioTracks={user.getAudioTracks()}
+                  />
+                  {tracks.map((track) => {
+                    return <VideoBox key={user.userID} videoTrack={track} />
+                  })}
+                </Fragment>
+              )
+            } else {
+              return <Fragment key={i}>NO SIGNAL</Fragment>
+            }
           })}
         </Box>
       </header>
       <main>
-        <Box
-          id="videoBox"
-          ref={boxRef}
-          sx={{
-            zIndex: -1,
-          }}
-        />
+        {videoTrack ? (
+          <VideoBox
+            videoTrack={videoTrack}
+            width="100%"
+            height="100%"
+            className={mirror ? 'mirror' : undefined}
+          />
+        ) : undefined}
       </main>
       <footer>
         <ToolBar />
@@ -138,22 +195,54 @@ export default function RoomPage() {
   )
 
   function ToolBar() {
-    const connected = connectionState == QNConnectionState.CONNECTED
-    return <Box sx={{
-      position: 'fixed',
-      bottom: '1ch'
-    }}>
-      <Button
-        variant="contained"
-        color={connected ? 'error' : 'success'}
-        onClick={onCallButtonClick}
-        disabled={connectionState == QNConnectionState.CONNECTING}
+    return (
+      <Box
+        sx={{
+          position: 'fixed',
+          bottom: '1ch',
+        }}
       >
-        {connected ? <CallEndRounded key='CallEndRounded' /> : <CallRounded key='CallRounded' />}
-      </Button>
-      <IconButton>
-        <VideocamRounded />
-      </IconButton>
-    </Box>
+        <IconButton
+          disabled={!audioTrack}
+          onClick={() => {
+            setMicMuted(!micMuted)
+            audioTrack?.setMuted(!micMuted)
+          }}
+          children={
+            audioTrack?.isMuted() && micMuted ? (
+              <MicOffRounded />
+            ) : (
+              <MicRounded />
+            )
+          }
+        />
+        <Button
+          variant="contained"
+          color={isConnected() ? 'error' : 'success'}
+          onClick={onCallButtonClick}
+          disabled={connectionState == QNConnectionState.CONNECTING}
+        >
+          {isConnected() ? (
+            <CallEndRounded key="CallEndRounded" />
+          ) : (
+            <RestartAltRounded key="RestartAltRounded" />
+          )}
+        </Button>
+        <IconButton
+          disabled={!videoTrack}
+          onClick={() => {
+            setCamMuted(!camMuted)
+            videoTrack?.setMuted(!camMuted)
+          }}
+          children={
+            videoTrack?.isMuted() && camMuted ? (
+              <VideocamOffRounded />
+            ) : (
+              <VideocamRounded />
+            )
+          }
+        />
+      </Box>
+    )
   }
 }

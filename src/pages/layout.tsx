@@ -5,8 +5,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router'
 
 import { VideoPreview } from '../components'
-import { setTheme } from '../features/settingSlice'
-import { toggleMirror } from '../features/webrtcSlice'
+import { setTheme, toggleMirror } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { getPassedTimeDesc } from '../utils'
 
@@ -21,8 +20,7 @@ function SectionFragment(props: { title: string, children?: React.ReactNode }) {
 export default function Layout() {
   const theme = useTheme()
   const dispatch = useAppDispatch()
-  const { themeCode } = useAppSelector(s => s.settings)
-  const mirror = useAppSelector(s => s.webrtc.mirror)
+  const { themeCode, mirror } = useAppSelector(s => s.settings)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
 

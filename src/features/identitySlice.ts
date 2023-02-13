@@ -1,38 +1,39 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
-
-type AllAuth = 'anonymous';
+type AllAuth = 'anonymous'
 
 export interface IdentityState {
-  auth: AllAuth | null,
-  nickname: string | null,
+  auth: AllAuth | null
+  userId: string | null
 }
 
 const initialState: IdentityState = {
   auth: localStorage.getItem('auth') as unknown as IdentityState['auth'],
-  nickname: localStorage.getItem('nickname'),
+  userId: localStorage.getItem('userId'),
 }
 
 export const identitySlice = createSlice({
   name: 'identity',
   initialState,
   reducers: {
-    updateNickname(state, { payload }: PayloadAction<string>) {
+    updateUserId(state, { payload: userId }: PayloadAction<string>) {
       state.auth = 'anonymous'
-      state.nickname = payload
+      state.userId = userId
+      localStorage.setItem('auth', 'anonymous')
+      localStorage.setItem('userId', userId)
     },
     logout(state) {
       switch (state.auth) {
         case 'anonymous':
           // haha
           state.auth = null
-          state.nickname = null
+          state.userId = null
         case undefined:
-          console.log('?');
+          console.log('?')
       }
-    }
-  }
+    },
+  },
 })
 
-export const { updateNickname, logout } = identitySlice.actions;
-export default identitySlice.reducer;
+export const { updateUserId, logout } = identitySlice.actions
+export default identitySlice.reducer
