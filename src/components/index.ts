@@ -3,6 +3,7 @@ import UserDialog from './UserDialog'
 import VideoPreview from './VideoPreview'
 import DetailPanel from './DetailPanel'
 import VideoBox from './VideoBox'
+import TooltipList from './TooltipList'
 
 export {
   CustomTextField,
@@ -10,4 +11,5 @@ export {
   VideoPreview,
   DetailPanel,
   VideoBox,
+  TooltipList,
 }
