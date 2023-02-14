@@ -10,8 +10,8 @@ import {
 import { createRef, useEffect, useSyncExternalStore } from 'react'
 import { Client } from '../api'
 
-export interface VideoPreviewRemoteProps {
-  videoTrack: QNRemoteTrack | QNLocalTrack
+export interface VideoBoxProps {
+  videoTrack: QNRemoteTrack | QNLocalTrack | undefined
   audioTracks?: (QNRemoteAudioTrack | QNLocalAudioTrack)[]
   height?: CSSProperties['height']
   width?: CSSProperties['width']
@@ -19,23 +19,18 @@ export interface VideoPreviewRemoteProps {
   // mirror?: boolean
 }
 
-export default function VideoPreviewRemote({
+export default function VideoBox({
   videoTrack,
   audioTracks,
   className,
   // mirror,
   ...size
-}: VideoPreviewRemoteProps) {
+}: VideoBoxProps) {
   const boxRef = createRef<HTMLDivElement>()
-  const { localTracks } = useSyncExternalStore(
-    Client.register,
-    Client.getSnapshot
-  )
-  const track = localTracks.find((t) => t.isVideo())
 
   useEffect(() => {
     console.log('play? ', boxRef.current)
-    if (!boxRef.current) return
+    if (!boxRef.current || !videoTrack) return
 
     if ('isSubscribed' in videoTrack) {
       if (videoTrack.isSubscribed()) {
@@ -70,7 +65,7 @@ export default function VideoPreviewRemote({
         ...size,
       }}
     >
-      {videoTrack.isMuted() ? (
+      {videoTrack?.isMuted() ? (
         <VideocamOffOutlined sx={{ zIndex: 1 }} />
       ) : (
         <></>
