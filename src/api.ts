@@ -21,27 +21,45 @@ import { store } from './store'
 const startTime = Date.now()
 const client = api.createClient()
 
-export async function getRoomToken(roomId: string, userId: string) {
-  const appId = store.getState().settings.appId
-
-  return fetch(
-    `https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`
-  ).then((resp) => resp.text())
-}
-
 // designed for integration of React Hooks
 export namespace Client {
+  export async function getRoomToken(roomId: string, userId: string) {
+    const appId = store.getState().settings.appId
+
+    return fetch(
+      `https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`
+    ).then((resp) => resp.text())
+  }
   // typings
   export type QNExternalStore = {
     localTracks: QNLocalTrack[]
     pinnedVisualTrack?: QNRemoteVideoTrack | QNLocalVideoTrack
     roomMembers: QNRemoteUser[]
-    // publishedTracks: QNRemoteTrack[]
-    // subscriptions: QNRemoteTrack[]
+    playbackDevices: MediaDeviceInfo[]
+    publishedTracks: QNLocalTrack[]
+    subscriptions: {
+      videoTracks: QNRemoteVideoTrack[]
+      audioTracks: QNRemoteAudioTrack[]
+    }
     connectionState: QNConnectionState
   }
 
   export type Callback = () => void
+
+  // variables
+  let qnStore: QNExternalStore = {
+    localTracks: [],
+    roomMembers: [],
+    playbackDevices: [],
+    publishedTracks: [],
+    subscriptions: {
+      videoTracks: [],
+      audioTracks: [],
+    },
+    connectionState: QNConnectionState.DISCONNECTED,
+  }
+
+  let listeners: Callback[] = []
 
   // function interfaces
   export function getSnapshot() {
@@ -82,14 +100,15 @@ export namespace Client {
   export async function connect(roomToken: string) {
     try {
       qnStore.connectionState = QNConnectionState.CONNECTING
-      notifyListeners('startConect')
+      notifyListeners('startConnect')
       await client.join(roomToken)
     } catch (e: any) {
       store.dispatch(warning({ message: e.error }))
-      return notifyListeners('no-connect')
+      console.log(e.error)
+
+      return notifyListeners('connection error')
     }
     store.dispatch(success({ message: '成功加入房间' }))
-    return notifyListeners('connected')
   }
 
   export async function disconnect() {
@@ -98,58 +117,68 @@ export namespace Client {
     return notifyListeners('disconnected')
   }
 
-  export async function publish(...args: Parameters<QNRTCClient['publish']>) {
-    await client.publish(...args)
+  export function setPlayback(device: MediaDeviceInfo) {}
+
+  export async function publish(...tracks: QNLocalTrack[]) {
+    await client.publish(tracks)
+    qnStore.publishedTracks.push(...tracks)
     return notifyListeners('publish')
   }
 
-  export async function unpublish(
-    ...args: Parameters<QNRTCClient['unpublish']>
-  ) {
-    await client.unpublish(...args)
-    notifyListeners('unpublish')
+  export async function unpublish(...tracks: QNLocalTrack[]) {
+    await client.unpublish(tracks)
+    const removingIds = tracks.map((t) => t.trackID)
+    qnStore.publishedTracks = qnStore.publishedTracks.filter((track) =>
+      removingIds.includes(track.trackID)
+    )
+    return notifyListeners('unpublish')
   }
 
-  export async function subscribe(
-    ...args: Parameters<QNRTCClient['subscribe']>
-  ) {
-    await client.subscribe(...args)
+  export async function subscribe(...tracks: QNRemoteTrack[]) {
+    const { videoTracks, audioTracks } = await client.subscribe(tracks)
+    qnStore.subscriptions.videoTracks.push(...videoTracks)
+    qnStore.subscriptions.audioTracks.push(...audioTracks)
+
     notifyListeners('subscribe')
   }
 
-  export async function unsubscribe(
-    ...args: Parameters<QNRTCClient['unsubscribe']>
-  ) {
-    await client.unsubscribe(...args)
+  export async function unsubscribe(...tracks: QNRemoteTrack[]) {
+    await client.unsubscribe(tracks)
+    const allId = tracks.map((t) => t.trackID!).sort()
+    const index = allId.findIndex((s) => s.startsWith('v'))
+
+    const audioIds = allId.splice(0, index - 0)
+    const videoIds = allId
+    console.log('vid:', videoIds, 'aid:', audioIds)
+
+    qnStore.subscriptions.videoTracks =
+      qnStore.subscriptions.videoTracks.filter(
+        (t) => t.trackID && videoIds.includes(t.trackID)
+      )
+    qnStore.subscriptions.audioTracks =
+      qnStore.subscriptions.audioTracks.filter(
+        (t) => t.trackID && audioIds.includes(t.trackID)
+      )
     notifyListeners('unsubscribe')
   }
 
-  // variables
-  let qnStore: QNExternalStore = {
-    localTracks: [],
-    roomMembers: [],
-    // publishedTracks: [],
-    // subscriptions: [],
-    connectionState: QNConnectionState.DISCONNECTED,
-  }
-
-  let listeners: Callback[] = []
-
   // bindings
-  initialize().then(() => {
-    // timing
-    const finishTime = Date.now()
-    store.dispatch(
-      success({ message: `loaded! (${finishTime - startTime} ms)` })
-    )
-  })
-  async function initialize() {
+
+  export async function _initialize() {
+    notifyListeners('initialize')
     qnStore.localTracks = [
       ...qnStore.localTracks,
       ...(await api.createMicrophoneAndCameraTracks()),
     ]
-    notifyListeners('initialize')
 
+    const updatePlaybackDevices = () =>
+      api.getPlaybackDevices().then((devices) => {
+        qnStore.playbackDevices = devices
+      })
+    await updatePlaybackDevices()
+    api.onPlaybackDeviceChanged = () => updatePlaybackDevices()
+
+    console.time('addListener')
     client.addListener(
       'user-joined',
       (_remoteUserID: string, _userData?: string) => {
@@ -177,6 +206,7 @@ export namespace Client {
         return notifyListeners('e: user-published')
       }
     )
+
     client.addListener(
       'user-unpublished',
       async (
@@ -237,5 +267,12 @@ export namespace Client {
     //   //
     //   return notifyListeners()
     // })
+    console.timeEnd('addListener')
   }
 }
+
+Client._initialize().then(() => {
+  // timing
+  const finishTime = Date.now()
+  store.dispatch(success({ message: `loaded! (${finishTime - startTime} ms)` }))
+})

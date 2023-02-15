@@ -3,11 +3,25 @@ import {
   MicOffRounded,
   MicRounded,
   RestartAltRounded,
+  ScreenShareRounded,
+  TuneRounded,
   VideocamOffRounded,
   VideocamRounded,
 } from '@mui/icons-material'
-import { Box, Button, IconButton, useTheme } from '@mui/material'
-import QNRTC, { QNConnectionState, QNLocalTrack } from 'qnweb-rtc'
+import {
+  Box,
+  Button,
+  IconButton,
+  Typography,
+  useTheme,
+  Tooltip,
+} from '@mui/material'
+import QNRTC, {
+  QNConnectionState,
+  QNLocalAudioTrack,
+  QNLocalTrack,
+  QNLocalVideoTrack,
+} from 'qnweb-rtc'
 import {
   MouseEventHandler,
   startTransition,
@@ -22,14 +36,16 @@ import {
 } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 
-import { Client, getRoomToken } from '../api'
-import { DetailPanel, VideoBox } from '../components'
+import { Client } from '../api'
+import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkRoomId } from '../utils'
-
-const verbose = console.log
+import { checkRoomId, debounce } from '../utils'
 
 export default function RoomPage() {
+  let autoJoin = true
+  if (import.meta.hot) {
+    // autoJoin = false
+  }
   const { roomId } = useParams()
   const navigate = useNavigate()
   const theme = useTheme()
@@ -39,15 +55,18 @@ export default function RoomPage() {
   const { userId, auth } = useAppSelector((s) => s.identity)
   const { mirror, facingMode } = useAppSelector((s) => s.settings)
 
-  const { pinnedVisualTrack, roomMembers, connectionState, localTracks } =
-    useSyncExternalStore(Client.register, Client.getSnapshot)
+  const {
+    connectionState,
+    localTracks,
+    publishedTracks,
+    pinnedVisualTrack,
+    playbackDevices,
+    roomMembers,
+  } = useSyncExternalStore(Client.register, Client.getSnapshot)
 
-  const isConnected = () => connectionState == QNConnectionState.CONNECTED
-
-  const videoTrack = localTracks.find((t) => t.isVideo())
-  const audioTrack = localTracks.find((t) => t.isAudio())
-
-  const [roomToken, setRoomToken] = useState<string>()
+  const isConnected =
+    connectionState == QNConnectionState.CONNECTED ||
+    connectionState == QNConnectionState.RECONNECTED
 
   // identity -> roomToken
   useEffect(() => {
@@ -56,63 +75,88 @@ export default function RoomPage() {
       return navigate('/')
     }
 
-    getRoomToken(roomId, userId).then(setRoomToken)
-  }, [roomId, userId])
+    const promise = Client.getRoomToken(roomId, userId).then((token) => {
+      if (autoJoin) {
+        return Client.connect(token)
+      }
+    })
+    if (autoJoin)
+      return () => {
+        if (isConnected) {
+          promise.then(() => Client.disconnect())
+        }
+      }
+  }, [])
 
   // roomToken -> (connect) connectionState
-  useEffect(() => {
-    if (!roomToken) return
-    const promise = Client.connect(roomToken)
 
-    return () => {
-      if (isConnected()) {
-        promise.then(Client.disconnect)
-      }
+  const [audioTrack, setAudioTrack] = useState<QNLocalAudioTrack | undefined>()
+  const [videoTrack, setVideoTrack] = useState<QNLocalVideoTrack | undefined>()
+
+  const [micMuted, setMicMuted] = useState(true)
+  const [camMuted, setCamMuted] = useState(true)
+
+  // mute according to toggle status
+  useEffect(() => {
+    if (audioTrack) {
+      audioTrack.setMuted(micMuted)
     }
-  }, [roomToken])
+    if (videoTrack) {
+      videoTrack.setMuted(camMuted)
+    }
+  }, [audioTrack, videoTrack])
 
   // [connectionState, localTracks] -> (publish)
   useEffect(() => {
-    const promise = (async () => {
-      if (isConnected()) {
-        Client.publish(localTracks)
-      }
-    })()
-
-    return () => {
-      promise.finally(async () => {
-        // unpublish the old ones
-        if (isConnected()) {
-          await Client.unpublish(localTracks)
+    if (isConnected && localTracks.length) {
+      const promise = Client.publish(...localTracks).then(() => {
+        if (localTracks.length) {
+          setVideoTrack(
+            localTracks.find((t): t is QNLocalVideoTrack => t.isVideo())
+          )
+          setAudioTrack(
+            localTracks.find((t): t is QNLocalAudioTrack => t.isAudio())
+          )
         }
       })
+
+      return () => {
+        promise.finally(() => {
+          // unpublish the old ones
+          if (isConnected) {
+            return Client.unpublish(...localTracks)
+          }
+        })
+      }
     }
   }, [connectionState, localTracks])
 
   // roomMembers -> (subscribe) -- allTracks
   useEffect(() => {
-    const promise = (async () => {
-      console.time('subscribe allTracks')
-      const allTracks = roomMembers.flatMap((user) => [
-        ...user.getAudioTracks(),
-        ...user.getVideoTracks(),
-      ])
-      console.log('allTracks', allTracks)
-      await Client.subscribe(allTracks)
-      console.timeEnd('subscribe allTracks')
-      return allTracks
-    })()
+    console.log(roomMembers)
+    const allTracks = roomMembers.flatMap((user) => [
+      ...user.getAudioTracks(),
+      ...user.getVideoTracks(),
+    ])
+    console.log(
+      'subscribe all remote tracks:\n',
+      allTracks.map((t) => t.trackID)
+    )
+
+    const promise = Client.subscribe(...allTracks)
 
     return () => {
-      promise.then(async (allTracks) => {
-        if (isConnected()) await Client.unsubscribe(allTracks)
+      promise.then(() => {
+        if (isConnected) {
+          return Client.unsubscribe(...allTracks)
+        }
       })
     }
   }, [roomMembers])
 
   // TODO: throttle
   const onCallButtonClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    if (isConnected()) {
+    if (isConnected) {
       Client.disconnect()
       const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
         ? 'metaKey'
@@ -122,24 +166,11 @@ export default function RoomPage() {
       if (!evt[modKey]) {
         navigate('/')
       }
-    } else if (roomToken) {
-      Client.connect(roomToken)
+    } else {
+      Client.getRoomToken(roomId!, userId!).then(Client.connect)
     }
   }
 
-  useEffect(() => {
-    if (videoTrack) {
-      verbose(';publish', videoTrack)
-      Client.publish(videoTrack)
-    }
-    if (audioTrack) {
-      verbose(';publish', audioTrack)
-      Client.publish(audioTrack)
-    }
-  }, [videoTrack, audioTrack])
-
-  const [micMuted, setMicMuted] = useState(audioTrack?.isMuted())
-  const [camMuted, setCamMuted] = useState(videoTrack?.isMuted())
   return (
     <>
       <DetailPanel roomId={roomId!} connectionState={connectionState} />
@@ -152,49 +183,43 @@ export default function RoomPage() {
             top: '0',
             width: '100%',
             bgcolor: '#aaaaaa10',
-            alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          {roomMembers.map((user, i) => {
-            const tracks = user.getVideoTracks()
-            if (tracks.length) {
-              const firstTrack = tracks.shift()!
-              return (
-                <Fragment key={i}>
-                  <VideoBox
-                    key={user.userID}
-                    videoTrack={firstTrack}
-                    audioTracks={user.getAudioTracks()}
-                  />
-                  {tracks.map((track) => {
-                    return <VideoBox key={user.userID} videoTrack={track} />
-                  })}
-                </Fragment>
-              )
-            } else {
-              return <Fragment key={i}>NO SIGNAL</Fragment>
-            }
+          {roomMembers.map((user) => {
+            return <UserBox key={user.userID} user={user} />
           })}
         </Box>
       </header>
       <main>
-        {videoTrack ? (
-          <VideoBox
-            videoTrack={videoTrack}
-            width="100%"
-            height="100%"
-            className={mirror ? 'mirror' : undefined}
-          />
-        ) : undefined}
+        <Box
+          sx={{
+            position: 'absolute',
+            left: '10%',
+            bottom: '10%',
+            width: '120px',
+            height: '80px',
+          }}
+        >
+          {videoTrack ? (
+            <VideoBox
+              videoTrack={videoTrack}
+              width="100%"
+              height="100%"
+              className={mirror ? 'mirror' : undefined}
+            />
+          ) : undefined}
+        </Box>
       </main>
       <footer>
         <ToolBar />
       </footer>
     </>
   )
-
   function ToolBar() {
+    // FIXME: mock up only
+    const [selected, setSelected] = useState<number>(0)
+
     return (
       <Box
         sx={{
@@ -202,46 +227,111 @@ export default function RoomPage() {
           bottom: '1ch',
         }}
       >
-        <IconButton
-          disabled={!audioTrack}
-          onClick={() => {
-            setMicMuted(!micMuted)
-            audioTrack?.setMuted(!micMuted)
-          }}
-          children={
-            audioTrack?.isMuted() && micMuted ? (
-              <MicOffRounded />
-            ) : (
-              <MicRounded />
-            )
+        <Tooltip
+          arrow
+          leaveDelay={200}
+          title={
+            <TooltipList
+              index={selected}
+              onSelect={(i) => setSelected(i)}
+              list={playbackDevices}
+            />
           }
-        />
+        >
+          <span>
+            <IconButton
+              disabled={!playbackDevices.length}
+              children={<TuneRounded />}
+            />
+          </span>
+        </Tooltip>
+        <Tooltip
+          arrow
+          leaveDelay={200}
+          title={
+            <TooltipList
+              index={selected}
+              onSelect={(i) => setSelected(i)}
+              list={localTracks
+                .filter((t): t is QNLocalAudioTrack => t.isAudio())
+                .map((t) => {
+                  const track = t.getMediaStreamTrack()!
+                  const label =
+                    track.label == 'MediaStreamAudioDestinationNode'
+                      ? '默认设备'
+                      : track.label
+                  return { label }
+                })}
+            />
+          }
+        >
+          <span>
+            <IconButton
+              disabled={!audioTrack}
+              onClick={() => {
+                setMicMuted(!micMuted)
+                audioTrack?.setMuted(!micMuted)
+              }}
+              children={
+                audioTrack?.isMuted() && micMuted ? (
+                  <MicOffRounded />
+                ) : (
+                  <MicRounded />
+                )
+              }
+            />
+          </span>
+        </Tooltip>
         <Button
           variant="contained"
-          color={isConnected() ? 'error' : 'success'}
+          color={isConnected ? 'error' : 'success'}
           onClick={onCallButtonClick}
           disabled={connectionState == QNConnectionState.CONNECTING}
         >
-          {isConnected() ? (
+          {isConnected ? (
             <CallEndRounded key="CallEndRounded" />
           ) : (
             <RestartAltRounded key="RestartAltRounded" />
           )}
         </Button>
-        <IconButton
-          disabled={!videoTrack}
-          onClick={() => {
-            setCamMuted(!camMuted)
-            videoTrack?.setMuted(!camMuted)
-          }}
-          children={
-            videoTrack?.isMuted() && camMuted ? (
-              <VideocamOffRounded />
-            ) : (
-              <VideocamRounded />
-            )
+        <Tooltip
+          arrow
+          leaveDelay={200}
+          title={
+            <TooltipList
+              index={selected}
+              onSelect={(i) => setSelected(i)}
+              list={localTracks
+                .filter((t): t is QNLocalVideoTrack => t.isVideo())
+                .map((t) => {
+                  const { label } = t.getMediaStreamTrack()!
+                  return { label }
+                })}
+            />
           }
-        />
+        >
+          <span>
+            <IconButton
+              disabled={!videoTrack}
+              onClick={() => {
+                setCamMuted(!camMuted)
+                videoTrack?.setMuted(!camMuted)
+              }}
+              children={
+                videoTrack?.isMuted() && camMuted ? (
+                  <VideocamOffRounded />
+                ) : (
+                  <VideocamRounded />
+                )
+              }
+            />
+          </span>
+        </Tooltip>
+        <Tooltip leaveDelay={200} title={'屏幕共享'}>
+          <span>
+            <IconButton children={<ScreenShareRounded />} />
+          </span>
+        </Tooltip>
       </Box>
     )
   }
