@@ -20,6 +20,7 @@ specifiers:
   qnweb-rtc: 4.2.0
   react: ^18.2.0
   react-dom: ^18.2.0
+  react-draggable: ^4.4.5
   react-redux: ^8.0.5
   react-router: ^6.8.0
   react-router-dom: ^6.8.0
@@ -39,6 +40,7 @@ dependencies:
   qnweb-rtc: 4.2.0_@types+node@18.11.18
   react: 18.2.0
   react-dom: 18.2.0_react@18.2.0
+  react-draggable: 4.4.5_biqbaboplfbrettd7655fr4n2y
   react-redux: 8.0.5_fxtgt6bjwd6p4cwoordejim2zi
   react-router: 6.8.0_react@18.2.0
   react-router-dom: 6.8.0_biqbaboplfbrettd7655fr4n2y
@@ -2289,6 +2291,18 @@ packages:
       loose-envify: 1.4.0
       react: 18.2.0
       scheduler: 0.23.0
+    dev: false
+
+  /react-draggable/4.4.5_biqbaboplfbrettd7655fr4n2y:
+    resolution: {integrity: sha512-OMHzJdyJbYTZo4uQE393fHcqqPYsEtkjfMgvCHr6rejT+Ezn4OZbNyGH50vv+SunC1RMvwOTSWkEODQLzw1M9g==}
+    peerDependencies:
+      react: '>= 16.3.0'
+      react-dom: '>= 16.3.0'
+    dependencies:
+      clsx: 1.2.1
+      prop-types: 15.8.1
+      react: 18.2.0
+      react-dom: 18.2.0_react@18.2.0
     dev: false
 
   /react-is/16.13.1:
