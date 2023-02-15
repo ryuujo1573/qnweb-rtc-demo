@@ -18,6 +18,27 @@ export default function TooltipList<
     label: string
   }
 >({ index: selectedIndex, onSelect, list }: TooltipListProps<T>) {
+  const listitems = list.map((item, i) => {
+    const selected = i == selectedIndex
+    const { label } = item
+    return (
+      <ListItem
+        key={`li-${i}`}
+        disablePadding
+        disableGutters
+        onClick={() => {
+          console.log(`[${label}] selected. %c(${i})`, 'color: gray')
+          onSelect(i)
+        }}
+      >
+        <ListItemButton disableGutters>
+          <ListItemIcon>{selected ? <Check /> : undefined}</ListItemIcon>
+          <ListItemText>{label}</ListItemText>
+        </ListItemButton>
+      </ListItem>
+    )
+  })
+
   return (
     <List
       dense
@@ -29,25 +50,7 @@ export default function TooltipList<
         },
       }}
     >
-      {...list.map((item, i) => {
-        const selected = i == selectedIndex
-        const { label } = item
-        return (
-          <ListItem
-            disablePadding
-            disableGutters
-            onClick={() => {
-              console.log(`[${label}] selected. %c(${i})`, 'color: gray')
-              onSelect(i)
-            }}
-          >
-            <ListItemButton disableGutters>
-              <ListItemIcon>{selected ? <Check /> : undefined}</ListItemIcon>
-              <ListItemText>{label}</ListItemText>
-            </ListItemButton>
-          </ListItem>
-        )
-      })}
+      {listitems.length ? listitems : '无可用设备'}
     </List>
   )
 }
