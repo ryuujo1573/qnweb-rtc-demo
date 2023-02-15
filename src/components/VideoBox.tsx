@@ -52,6 +52,7 @@ export default function VideoBox({
     <Box
       className={className}
       ref={boxRef}
+      bgcolor={'Background'}
       sx={{
         height: '180px',
         width: '240px',
@@ -64,13 +65,6 @@ export default function VideoBox({
         },
         ...size,
       }}
-    >
-      {videoTrack?.isMuted() ? (
-        <VideocamOffOutlined sx={{ zIndex: 1 }} />
-      ) : (
-        <></>
-      )}
-      <b>VIDEO</b>
-    </Box>
+    ></Box>
   )
 }

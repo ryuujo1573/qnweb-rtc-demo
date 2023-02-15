@@ -1,6 +1,8 @@
 import { getPassedTimeDesc } from './datetime'
 import { useDebounce } from './hooks'
-export { getPassedTimeDesc, useDebounce }
+import { stringToColor } from './avatar'
+
+export { getPassedTimeDesc, useDebounce, stringToColor }
 
 export const checkNickname = (v: string) => /^\w{1,24}$/.test(v)
 
