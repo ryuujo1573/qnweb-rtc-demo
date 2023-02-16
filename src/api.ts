@@ -135,11 +135,13 @@ export namespace Client {
   }
 
   export async function subscribe(...tracks: QNRemoteTrack[]) {
-    const { videoTracks, audioTracks } = await client.subscribe(tracks)
+    const result = await client.subscribe(tracks)
+    const { videoTracks, audioTracks } = result
     qnStore.subscriptions.videoTracks.push(...videoTracks)
     qnStore.subscriptions.audioTracks.push(...audioTracks)
 
     notifyListeners('subscribe')
+    return result
   }
 
   export async function unsubscribe(...tracks: QNRemoteTrack[]) {
@@ -202,7 +204,7 @@ export namespace Client {
         // qnStore.publishedTracks = [...qnStore.publishedTracks, ...qntracks]
         // client.subscribe(qntracks)
         qnStore.roomMembers = [...client.remoteUsers]
-        await client.subscribe(qntracks)
+        // await client.subscribe(qntracks)
         return notifyListeners('e: user-published')
       }
     )

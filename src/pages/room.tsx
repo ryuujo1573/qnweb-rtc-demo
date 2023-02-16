@@ -131,29 +131,6 @@ export default function RoomPage() {
     }
   }, [connectionState, localTracks])
 
-  // roomMembers -> (subscribe) -- allTracks
-  useEffect(() => {
-    console.log(roomMembers)
-    const allTracks = roomMembers.flatMap((user) => [
-      ...user.getAudioTracks(),
-      ...user.getVideoTracks(),
-    ])
-    console.log(
-      'subscribe all remote tracks:\n',
-      allTracks.map((t) => t.trackID)
-    )
-
-    const promise = Client.subscribe(...allTracks)
-
-    return () => {
-      promise.then(() => {
-        if (isConnected) {
-          return Client.unsubscribe(...allTracks)
-        }
-      })
-    }
-  }, [roomMembers])
-
   // TODO: throttle
   const onCallButtonClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
     if (isConnected) {
@@ -173,7 +150,7 @@ export default function RoomPage() {
 
   return (
     <>
-      <DetailPanel roomId={roomId!} connectionState={connectionState} />
+      <DetailPanel roomId={roomId!} />
       <header>
         <Box
           sx={{

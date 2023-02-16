@@ -23,18 +23,17 @@ import Draggable from 'react-draggable'
 import { Client } from '../api'
 
 type _Props = {
-  connectionState: QNConnectionState
   roomId: string
 }
 
-export default function DetailPanel({ connectionState, roomId }: _Props) {
+export default function DetailPanel({ roomId }: _Props) {
   const theme = useTheme()
 
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
 
-  const { publishedTracks } = useSyncExternalStore(
+  const { publishedTracks, connectionState } = useSyncExternalStore(
     Client.register,
     Client.getSnapshot
   )

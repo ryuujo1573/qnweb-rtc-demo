@@ -11,7 +11,15 @@ type UserBoxProps = {
 export default function UserBox({ user }: UserBoxProps) {
   const tracks = user.getVideoTracks()
   const firstTrack = tracks.shift()
-  const icon = <VerifiedUserRounded fontSize="inherit" />
+  const icon = (
+    <VerifiedUserRounded
+      sx={{
+        fontSize: 'inherit',
+        marginInline: '1ch',
+        verticalAlign: 'middle',
+      }}
+    />
+  )
 
   return (
     <Box
@@ -40,15 +48,14 @@ export default function UserBox({ user }: UserBoxProps) {
         variant="subtitle2"
         sx={{
           position: 'absolute',
-          marginInline: '1ch',
           maxWidth: 'calc(100% - 2ch)',
           overflow: 'hidden',
           left: 0,
-          bottom: 0,
+          bottom: '.5ch',
           zIndex: 2,
         }}
       >
-        {icon}&nbsp;
+        {icon}
         {user.userID}
       </Typography>
       <VideoBox videoTrack={firstTrack} audioTracks={user.getAudioTracks()} />
