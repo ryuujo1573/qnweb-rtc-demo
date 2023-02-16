@@ -44,7 +44,7 @@ import { checkRoomId, debounce } from '../utils'
 export default function RoomPage() {
   let autoJoin = true
   if (import.meta.hot) {
-    // autoJoin = false
+    autoJoin = false
   }
   const { roomId } = useParams()
   const navigate = useNavigate()
@@ -132,21 +132,25 @@ export default function RoomPage() {
   }, [connectionState, localTracks])
 
   // TODO: throttle
-  const onCallButtonClick: MouseEventHandler<HTMLButtonElement> = (evt) => {
-    if (isConnected) {
-      Client.disconnect()
-      const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
-        ? 'metaKey'
-        : 'ctrlKey'
-      // if click whilst holding ctrl/cmd key,
-      // the page won't navigate on dev purpose.
-      if (!evt[modKey]) {
-        navigate('/')
+  const onCallButtonClick =
+    (isConnected: boolean): MouseEventHandler<HTMLButtonElement> =>
+    (evt) => {
+      if (isConnected) {
+        Client.disconnect()
+        const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
+          ? 'metaKey'
+          : 'ctrlKey'
+        // if click whilst holding ctrl/cmd key,
+        // the page won't navigate on dev purpose.
+        if (!evt[modKey]) {
+          navigate('/')
+        }
+      } else {
+        Client.getRoomToken(roomId!, userId!).then(Client.connect)
       }
-    } else {
-      Client.getRoomToken(roomId!, userId!).then(Client.connect)
     }
-  }
+
+  const [selected, setSelected] = useState<number>(0)
 
   return (
     <>
@@ -172,10 +176,10 @@ export default function RoomPage() {
         <Box
           sx={{
             position: 'absolute',
-            left: '10%',
-            bottom: '10%',
-            width: '120px',
-            height: '80px',
+            left: '30px',
+            bottom: '30px',
+            width: '240px',
+            height: '160px',
           }}
         >
           {videoTrack ? (
@@ -189,127 +193,122 @@ export default function RoomPage() {
         </Box>
       </main>
       <footer>
-        <ToolBar />
+        <Box
+          sx={{
+            position: 'fixed',
+            bottom: '1ch',
+          }}
+        >
+          <Tooltip
+            arrow
+            leaveDelay={200}
+            title={
+              <TooltipList
+                index={selected}
+                onSelect={(i) => setSelected(i)}
+                list={playbackDevices}
+              />
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!playbackDevices.length}
+                children={<TuneRounded />}
+              />
+            </span>
+          </Tooltip>
+          <Tooltip
+            arrow
+            leaveDelay={200}
+            title={
+              <TooltipList
+                index={selected}
+                onSelect={(i) => setSelected(i)}
+                list={localTracks
+                  .filter((t): t is QNLocalAudioTrack => t.isAudio())
+                  .map((t) => {
+                    const track = t.getMediaStreamTrack()!
+                    const label =
+                      track.label == 'MediaStreamAudioDestinationNode'
+                        ? '默认设备'
+                        : track.label
+                    return { label }
+                  })}
+              />
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!audioTrack}
+                onClick={() => {
+                  setMicMuted(!micMuted)
+                  audioTrack?.setMuted(!micMuted)
+                }}
+                children={
+                  audioTrack?.isMuted() && micMuted ? (
+                    <MicOffRounded />
+                  ) : (
+                    <MicRounded />
+                  )
+                }
+              />
+            </span>
+          </Tooltip>
+          <Button
+            variant="contained"
+            color={isConnected ? 'error' : 'success'}
+            onClick={onCallButtonClick(isConnected)}
+            disabled={connectionState == QNConnectionState.CONNECTING}
+          >
+            {isConnected ? (
+              <CallEndRounded key="CallEndRounded" />
+            ) : (
+              <RestartAltRounded key="RestartAltRounded" />
+            )}
+          </Button>
+          <Tooltip
+            arrow
+            leaveDelay={200}
+            title={
+              <TooltipList
+                index={selected}
+                onSelect={(i) => setSelected(i)}
+                list={localTracks
+                  .filter((t): t is QNLocalVideoTrack => t.isVideo())
+                  .map((t) => {
+                    const { label } = t.getMediaStreamTrack()!
+                    return { label }
+                  })}
+              />
+            }
+          >
+            <span>
+              <IconButton
+                disabled={!videoTrack}
+                onClick={() => {
+                  setCamMuted(!camMuted)
+                  videoTrack?.setMuted(!camMuted)
+                }}
+                children={
+                  videoTrack?.isMuted() && camMuted ? (
+                    <VideocamOffRounded />
+                  ) : (
+                    <VideocamRounded />
+                  )
+                }
+              />
+            </span>
+          </Tooltip>
+          <Tooltip leaveDelay={200} title={'屏幕共享'}>
+            <span>
+              <IconButton
+                onClick={() => {}}
+                children={<ScreenShareRounded />}
+              />
+            </span>
+          </Tooltip>
+        </Box>
       </footer>
     </>
   )
-  function ToolBar() {
-    // FIXME: mock up only
-    const [selected, setSelected] = useState<number>(0)
-
-    return (
-      <Box
-        sx={{
-          position: 'fixed',
-          bottom: '1ch',
-        }}
-      >
-        <Tooltip
-          arrow
-          leaveDelay={200}
-          title={
-            <TooltipList
-              index={selected}
-              onSelect={(i) => setSelected(i)}
-              list={playbackDevices}
-            />
-          }
-        >
-          <span>
-            <IconButton
-              disabled={!playbackDevices.length}
-              children={<TuneRounded />}
-            />
-          </span>
-        </Tooltip>
-        <Tooltip
-          arrow
-          leaveDelay={200}
-          title={
-            <TooltipList
-              index={selected}
-              onSelect={(i) => setSelected(i)}
-              list={localTracks
-                .filter((t): t is QNLocalAudioTrack => t.isAudio())
-                .map((t) => {
-                  const track = t.getMediaStreamTrack()!
-                  const label =
-                    track.label == 'MediaStreamAudioDestinationNode'
-                      ? '默认设备'
-                      : track.label
-                  return { label }
-                })}
-            />
-          }
-        >
-          <span>
-            <IconButton
-              disabled={!audioTrack}
-              onClick={() => {
-                setMicMuted(!micMuted)
-                audioTrack?.setMuted(!micMuted)
-              }}
-              children={
-                audioTrack?.isMuted() && micMuted ? (
-                  <MicOffRounded />
-                ) : (
-                  <MicRounded />
-                )
-              }
-            />
-          </span>
-        </Tooltip>
-        <Button
-          variant="contained"
-          color={isConnected ? 'error' : 'success'}
-          onClick={onCallButtonClick}
-          disabled={connectionState == QNConnectionState.CONNECTING}
-        >
-          {isConnected ? (
-            <CallEndRounded key="CallEndRounded" />
-          ) : (
-            <RestartAltRounded key="RestartAltRounded" />
-          )}
-        </Button>
-        <Tooltip
-          arrow
-          leaveDelay={200}
-          title={
-            <TooltipList
-              index={selected}
-              onSelect={(i) => setSelected(i)}
-              list={localTracks
-                .filter((t): t is QNLocalVideoTrack => t.isVideo())
-                .map((t) => {
-                  const { label } = t.getMediaStreamTrack()!
-                  return { label }
-                })}
-            />
-          }
-        >
-          <span>
-            <IconButton
-              disabled={!videoTrack}
-              onClick={() => {
-                setCamMuted(!camMuted)
-                videoTrack?.setMuted(!camMuted)
-              }}
-              children={
-                videoTrack?.isMuted() && camMuted ? (
-                  <VideocamOffRounded />
-                ) : (
-                  <VideocamRounded />
-                )
-              }
-            />
-          </span>
-        </Tooltip>
-        <Tooltip leaveDelay={200} title={'屏幕共享'}>
-          <span>
-            <IconButton children={<ScreenShareRounded />} />
-          </span>
-        </Tooltip>
-      </Box>
-    )
-  }
 }
