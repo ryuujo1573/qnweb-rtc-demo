@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { checkUserId } from '../utils'
 
 type AllAuth = 'anonymous'
 
@@ -17,6 +18,11 @@ export const identitySlice = createSlice({
   initialState,
   reducers: {
     updateUserId(state, { payload: userId }: PayloadAction<string>) {
+      if (checkUserId(userId) == false) {
+        console.warn('UserId format not satisfied.', { payload: userId })
+        return
+      }
+
       state.auth = 'anonymous'
       state.userId = userId
       localStorage.setItem('auth', 'anonymous')

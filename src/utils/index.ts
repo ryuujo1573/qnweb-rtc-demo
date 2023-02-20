@@ -4,7 +4,7 @@ import { stringToColor } from './avatar'
 
 export { getPassedTimeDesc, useDebounce, stringToColor }
 
-export const checkNickname = (v: string) => /^\w{1,24}$/.test(v)
+export const checkUserId = (v: string) => /^\w{1,24}$/.test(v)
 
 export const checkRoomId = (v: string) => /^[0-9a-zA-Z_-]{3,64}$/.test(v)
 

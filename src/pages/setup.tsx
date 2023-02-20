@@ -6,7 +6,7 @@ import { CustomTextField } from '../components'
 import { updateUserId } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkNickname, checkRoomId, useDebounce } from '../utils'
+import { checkUserId, checkRoomId, useDebounce } from '../utils'
 
 export default function SetupPage() {
   const theme = useTheme()
@@ -36,7 +36,7 @@ export default function SetupPage() {
       key="nickname"
       onSubmit={(e) => {
         e.preventDefault()
-        if (newNickname && checkNickname(newNickname)) {
+        if (newNickname && checkUserId(newNickname)) {
           dispatch(updateUserId(newNickname))
         } else {
           dispatch(error({ message: '昵称限制为2~24个字符' }))
