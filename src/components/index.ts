@@ -5,6 +5,7 @@ import DetailPanel from './DetailPanel'
 import VideoBox from './VideoBox'
 import TooltipList from './TooltipList'
 import UserBox from './UserBox'
+import AudioWave from './AudioWave'
 
 export {
   CustomTextField,
@@ -14,4 +15,5 @@ export {
   VideoBox,
   TooltipList,
   UserBox,
+  AudioWave,
 }
