@@ -1,36 +1,42 @@
-import { Alert, createTheme, CssBaseline, PaletteOptions, Snackbar, ThemeProvider } from '@mui/material'
-import { blueGrey, grey, lightBlue, teal } from '@mui/material/colors'
-import { FC, useEffect, useMemo, useState } from 'react'
 import {
-  createBrowserRouter,
-  RouterProvider
-} from "react-router-dom"
+  Alert,
+  createTheme,
+  CssBaseline,
+  PaletteOptions,
+  Snackbar,
+  ThemeProvider,
+} from '@mui/material'
+import { blue, grey, lightBlue, teal } from '@mui/material/colors'
+import { FC, useEffect, useMemo, useState } from 'react'
+import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import { reset } from './features/messageSlice'
 import { selectTheme } from './features/settingSlice'
 import { ErrorPage, Layout, RoomPage, SetupPage } from './pages'
 import { useAppDispatch, useAppSelector } from './store'
 
-const router = createBrowserRouter([
+const router = createBrowserRouter(
+  [
+    {
+      path: '/',
+      element: <Layout />,
+      errorElement: <ErrorPage />,
+      children: [
+        {
+          path: '',
+          element: <SetupPage />,
+        },
+        {
+          path: 'room/:roomId',
+          element: <RoomPage />,
+        },
+      ],
+    },
+  ],
   {
-    path: '/',
-    element: <Layout />,
-    errorElement: <ErrorPage />,
-    children: [
-      {
-        path: "",
-        element: <SetupPage />,
-      },
-      {
-        path: "room/:roomId",
-        element: <RoomPage />,
-      }
-    ]
-  },
-], {
-  basename: import.meta.env['BASE_URL']
-})
-
+    basename: import.meta.env['BASE_URL'],
+  }
+)
 
 export const App: FC = () => {
   // theme / darkmode
@@ -40,7 +46,7 @@ export const App: FC = () => {
 
   const darkModePalette: PaletteOptions = {
     mode: 'dark',
-    primary: blueGrey,
+    primary: blue,
     secondary: teal,
     text: {
       primary: grey[300],
@@ -66,12 +72,16 @@ export const App: FC = () => {
     },
   }
 
-  const theme = useMemo(() => createTheme({
-    palette: isDarkmode ? darkModePalette : lightModePalette,
-    shape: {
-      borderRadius: 20
-    }
-  }), [isDarkmode]);
+  const theme = useMemo(
+    () =>
+      createTheme({
+        palette: isDarkmode ? darkModePalette : lightModePalette,
+        shape: {
+          borderRadius: 20,
+        },
+      }),
+    [isDarkmode]
+  )
 
   useEffect(() => {
     if (themeCode == 'auto') {
@@ -86,14 +96,17 @@ export const App: FC = () => {
 
       // // remove listener when themeCode is no longer 'auto'
       return () => mq.removeEventListener('change', onPreferredModeChanged)
-    }
-    else {
+    } else {
       toggleDarkmode(themeCode == 'dark')
     }
   }, [themeCode])
 
   // snackbar
-  const { message: msg, severity, ...snackBarProps } = useAppSelector(s => s.message.current) ?? {}
+  const {
+    message: msg,
+    severity,
+    ...snackBarProps
+  } = useAppSelector((s) => s.message.current) ?? {}
 
   const handleSnackClose = () => dispatch(reset())
 
@@ -106,12 +119,11 @@ export const App: FC = () => {
         onClose={handleSnackClose}
         open={!!msg}
         {...snackBarProps}
-        {...severity
+        {...(severity
           ? { children: <Alert severity={severity}>{msg}</Alert> }
-          : { message: msg }}
+          : { message: msg })}
       />
       <RouterProvider router={router} />
     </ThemeProvider>
   )
 }
-

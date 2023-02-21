@@ -8,6 +8,6 @@ export default defineConfig({
     React({
       tsDecorators: true,
     }),
-    FullReload(['src/**/*']),
+    FullReload(['src/pages/room.tsx']),
   ],
 })

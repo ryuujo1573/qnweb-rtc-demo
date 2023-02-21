@@ -151,6 +151,9 @@ export default function UserBox({ user }: UserBoxProps) {
             fontSize: 'inherit',
             verticalAlign: 'middle',
             marginInline: '4px',
+            '&:last-child': {
+              mixBlendMode: 'normal',
+            },
           },
           ':hover': {
             bgcolor: 'black',

@@ -1,5 +1,5 @@
-import { alpha, InputBase, InputBaseProps, styled, Theme } from "@mui/material";
-import { MUIStyledCommonProps } from "@mui/system/createStyled"
+import { alpha, InputBase, InputBaseProps, styled, Theme } from '@mui/material'
+import { MUIStyledCommonProps } from '@mui/system/createStyled'
 
 const Control = styled(InputBase)(({ theme }) => ({
   '& .MuiInputBase-input': {
@@ -31,13 +31,9 @@ const Control = styled(InputBase)(({ theme }) => ({
   },
 }))
 
-
 export function useTextField() {
-
   return (props: InputBaseProps & MUIStyledCommonProps<Theme>) => (
-    <Control {...props}
-
-    />
+    <Control {...props} />
   )
 }
 export default Control

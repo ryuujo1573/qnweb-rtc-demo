@@ -1,12 +1,12 @@
-import type { AlertColor } from "@mui/material"
-import { createSlice, PayloadAction } from "@reduxjs/toolkit"
+import type { AlertColor } from '@mui/material'
+import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 
 interface MessageState {
   current?: {
-    message: string,
-    severity?: AlertColor,
-    autoHideDuration?: number,
-    anchorOrigin?: { vertical: V, horizontal: H },
+    message: string
+    severity?: AlertColor
+    autoHideDuration?: number
+    anchorOrigin?: { vertical: V; horizontal: H }
   }
 }
 
@@ -19,7 +19,7 @@ type H = ['left', 'center', 'right'][number]
 type MessageActionPayload = Exclude<MessageState['current'], undefined>
 
 export const messageSlice = createSlice({
-  name: "message",
+  name: 'message',
   initialState,
   reducers: {
     error(state, { payload }: PayloadAction<MessageActionPayload>) {
@@ -54,12 +54,13 @@ export const messageSlice = createSlice({
     },
     reset(state) {
       state.current = undefined
-    }
-  }
+    },
+  },
 })
 
 export default messageSlice.reducer
-export const { error, warning, info, success, message, reset } = messageSlice.actions
+export const { error, warning, info, success, message, reset } =
+  messageSlice.actions
 
 // export function showMessage() {
 // }

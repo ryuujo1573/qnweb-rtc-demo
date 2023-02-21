@@ -1,16 +1,6 @@
-import { Box, BoxProps, SxProps, Theme } from '@mui/material'
-import { CSSProperties } from '@mui/material/styles/createMixins'
-import {
-  QNLocalAudioTrack,
-  QNLocalTrack,
-  QNLocalVideoTrack,
-  QNRemoteAudioTrack,
-  QNRemoteTrack,
-  QNRemoteVideoTrack,
-} from 'qnweb-rtc'
-import { useContext, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { client } from '../api'
+import { Box, BoxProps } from '@mui/material'
+import { QNLocalVideoTrack, QNRemoteVideoTrack } from 'qnweb-rtc'
+import { useContext, useEffect, useRef } from 'react'
 import { StageContext } from '../pages/room'
 
 export interface VideoBoxProps extends BoxProps {
