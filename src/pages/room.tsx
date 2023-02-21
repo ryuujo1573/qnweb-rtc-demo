@@ -36,7 +36,7 @@ import React, {
 import { useNavigate, useParams } from 'react-router-dom'
 import { client } from '../api'
 
-import { TooltipList, UserBox, VideoBox } from '../components'
+import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { error, message } from '../features/messageSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkUserId, checkRoomId } from '../utils'
@@ -146,10 +146,7 @@ export default function RoomPage() {
 
     return () => {
       client.removeAllListeners()
-      //
-      if (isConnected(state)) {
-        client.leave()
-      }
+      client.leave()
 
       QNRTC.onCameraChanged = undefined
       QNRTC.onMicrophoneChanged = undefined
@@ -195,8 +192,10 @@ export default function RoomPage() {
         }
       } else {
         if (camTrack != null) {
-          camTrack.destroy()
-          setCamTrack(null)
+          client.unpublish(camTrack).then(() => {
+            setCamTrack(null)
+            camTrack.destroy()
+          })
         }
       }
       if (!micMuted) {
@@ -212,8 +211,10 @@ export default function RoomPage() {
         }
       } else {
         if (micTrack != null) {
-          micTrack.destroy()
-          setMicTrack(null)
+          client.unpublish(micTrack).then(() => {
+            setMicTrack(null)
+            micTrack.destroy()
+          })
         }
       }
     } else if (!isConnecting(state)) {
@@ -264,17 +265,16 @@ export default function RoomPage() {
       setTrack: setPinnedTrack,
       boxRef: pinnedBoxRef,
     }),
-    []
+    [pinnedTrack]
   )
 
   return (
     <StageContext.Provider value={stageContextValue}>
-      {/* <DetailPanel /> */}
+      <DetailPanel tracks={[camTrack, micTrack, screenVideo, screenAudio]} />
       <Box
         component="header"
         sx={{
           display: 'flex',
-          position: 'fixed',
           zIndex: 0,
           top: '0',
           width: '100%',
@@ -286,13 +286,19 @@ export default function RoomPage() {
           return <UserBox key={user.userID} user={user} />
         })}
       </Box>
-      <main>
+      <Box
+        component="main"
+        sx={{
+          position: 'flex',
+          flex: 1,
+        }}
+      >
         <Box
           ref={pinnedBoxRef}
           sx={{
             position: 'relative',
-            width: '640px',
-            height: '480px',
+            width: '100%',
+            height: '100%',
           }}
         >
           <IconButton
@@ -325,7 +331,7 @@ export default function RoomPage() {
             className={mirror ? 'mirror' : undefined}
           />
         ) : undefined}
-      </main>
+      </Box>
       <footer>
         <Box
           sx={{
@@ -354,7 +360,7 @@ export default function RoomPage() {
           >
             <span>
               <IconButton
-                disabled={!isConnected(state)}
+                disabled={!isConnected(state) || !playbacks}
                 children={<TuneRounded />}
               />
             </span>
@@ -380,7 +386,7 @@ export default function RoomPage() {
           >
             <span>
               <IconButton
-                disabled={!isConnected(state)}
+                disabled={!isConnected(state) || !microphones}
                 onClick={() => {
                   micTrack?.setMuted(!micMuted)
                   setMicMuted(!micMuted)
@@ -393,7 +399,7 @@ export default function RoomPage() {
             variant="contained"
             color={isConnected(state) ? 'error' : 'success'}
             onClick={onCallButtonClick(isConnected(state))}
-            disabled={state == QState.CONNECTING}
+            disabled={isConnecting(state)}
           >
             {isConnected(state) ? (
               <CallEndRounded key="CallEndRounded" />
@@ -422,7 +428,7 @@ export default function RoomPage() {
           >
             <span>
               <IconButton
-                disabled={!isConnected(state)}
+                disabled={!isConnected(state) || !cameras}
                 onClick={() => {
                   camTrack?.setMuted(!camMuted)
                   setCamMuted(!camMuted)
@@ -470,7 +476,6 @@ export default function RoomPage() {
       }
     )
     client.addListener('user-joined', (uid: string, userData?: string) => {
-      debugger
       setUsers((users) => [
         ...users,
         {
@@ -492,7 +497,6 @@ export default function RoomPage() {
         const { audioTracks, videoTracks } = await client.subscribe(qntracks)
         setUsers((users) => {
           const user = users.find((u) => u.userID == uid)!
-          debugger
           user.audioTracks.push(...audioTracks)
           user.videoTracks.push(...videoTracks)
           console.log('user', user)
@@ -503,28 +507,34 @@ export default function RoomPage() {
     client.addListener(
       'user-unpublished',
       async (uid: string, qntracks: QNRemoteTrack[]) => {
-        const user = users.find((u) => u.userID == uid)!
-        const removalIds = qntracks.map((t) => t.trackID!)
-        await client.unsubscribe(qntracks)
-
-        user.audioTracks = user.audioTracks.filter(
-          (t) => !removalIds.includes(t.trackID!)
-        )
-        user.videoTracks = user.videoTracks.filter(
-          (t) => !removalIds.includes(t.trackID!)
-        )
-        setUsers(users.slice())
+        setUsers((users) => {
+          const user = users.find((u) => u.userID == uid)!
+          const removalIds = qntracks.map((t) => t.trackID!)
+          debugger
+          user.audioTracks = user.audioTracks.filter(
+            (t) => !removalIds.includes(t.trackID!)
+          )
+          user.videoTracks = user.videoTracks.filter(
+            (t) => !removalIds.includes(t.trackID!)
+          )
+          return users.slice()
+        })
+        // await client.unsubscribe(qntracks)
       }
     )
     client.addListener('user-reconnecting', (uid: string) => {
-      const user = users.find((u) => u.userID == uid)!
-      user.state = QState.RECONNECTING
-      setUsers(users.slice())
+      setUsers((users) => {
+        const user = users.find((u) => u.userID == uid)!
+        user.state = QState.RECONNECTING
+        return users.slice()
+      })
     })
     client.addListener('user-reconnected', (uid: string) => {
-      const user = users.find((u) => u.userID == uid)!
-      user.state = QState.RECONNECTED
-      setUsers(users.slice())
+      setUsers((users) => {
+        const user = users.find((u) => u.userID == uid)!
+        user.state = QState.RECONNECTED
+        return users.slice()
+      })
     })
   }
 }

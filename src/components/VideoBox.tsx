@@ -15,13 +15,11 @@ import { StageContext } from '../pages/room'
 
 export interface VideoBoxProps extends BoxProps {
   videoTrack: QNRemoteVideoTrack | QNLocalVideoTrack | undefined
-  audioTracks?: (QNRemoteAudioTrack | QNLocalAudioTrack)[]
   // mirror?: boolean
 }
 
 export default function VideoBox({
   videoTrack,
-  audioTracks,
   className,
   sx,
   children,
@@ -33,13 +31,18 @@ export default function VideoBox({
     track: pinnedTrack,
   } = useContext(StageContext)
 
+  console.log('pinnedTrack', pinnedTrack)
   const pinned = videoTrack != undefined && pinnedTrack == videoTrack
-  if (pinned) console.log('pinned!', pinnedTrack)
 
   useEffect(() => {
-    // const target = pinned ? pinnedBoxRef.current : boxRef.current
     const target = pinned ? pinnedBoxRef.current : boxRef.current
-    console.log('pinned?', pinned, target)
+    console.log(
+      'videoTrack',
+      pinned ? 'pinned' : 'unpinned',
+      videoTrack,
+      pinnedTrack
+    )
+    console.log('target', target)
     if (target == undefined || !videoTrack) return
 
     // if it's remote track
@@ -54,27 +57,8 @@ export default function VideoBox({
     } else {
       videoTrack.play(target, { mirror: false })
     }
-
-    if (audioTracks) {
-      const unsubscribedTracks = audioTracks.filter(
-        (t): t is QNRemoteAudioTrack => 'isSubscribed' in t && !t.isSubscribed()
-      )
-      // make sure to subscribe before play
-      if (unsubscribedTracks.length) {
-        // Client.subscribe(...unsubscribedTracks).then(({ audioTracks }) => {
-        //   audioTracks.forEach((t) => t.play(target!))
-        // })
-      }
-      // play the rest tracks
-      audioTracks
-        .filter(
-          (t) =>
-            unsubscribedTracks.findIndex((ut) => ut.trackID == t.trackID) != -1
-        )
-        .forEach((t) => t.play(target!))
-    }
     // }, [target, mirror])
-  }, [boxRef.current, videoTrack, audioTracks, pinned])
+  }, [boxRef.current, videoTrack, pinned])
 
   return (
     <Box

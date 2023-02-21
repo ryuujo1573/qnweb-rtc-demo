@@ -1,4 +1,4 @@
-import { Link, Typography, useTheme } from '@mui/material'
+import { Box, Link, useTheme } from '@mui/material'
 import { ChangeEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -29,15 +29,15 @@ export default function SetupPage() {
     1500
   )
 
-  const [newNickname, setNickname] = useState('')
+  const [newUserId, setNewUserId] = useState('')
 
   const step1 = () => (
     <form
       key="nickname"
       onSubmit={(e) => {
         e.preventDefault()
-        if (newNickname && checkUserId(newNickname)) {
-          dispatch(updateUserId(newNickname))
+        if (newUserId && checkUserId(newUserId)) {
+          dispatch(updateUserId(newUserId))
         } else {
           dispatch(error({ message: '昵称限制为2~24个字符' }))
         }
@@ -46,8 +46,8 @@ export default function SetupPage() {
       <CustomTextField
         placeholder={'请输入昵称'}
         name="roomid"
-        value={newNickname}
-        onChange={(e) => setNickname(e.target.value.trim())}
+        value={newUserId}
+        onChange={(e) => setNewUserId(e.target.value.trim())}
       />
       <Link
         variant="body2"
@@ -110,10 +110,19 @@ export default function SetupPage() {
 
   return (
     <>
-      <main>
+      <Box
+        component="main"
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flex: '1',
+        }}
+      >
         <img src="qiniu.svg" alt="logo" width={300} className="logo" />
         {auth && nickname ? step2() : step1()}
-      </main>
+      </Box>
     </>
   )
 }

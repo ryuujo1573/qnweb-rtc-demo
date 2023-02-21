@@ -6,57 +6,64 @@ import {
 import { Divider, IconButton, Typography } from '@mui/material'
 import { Box, useTheme } from '@mui/system'
 import {
-  QNConnectionState,
+  QNConnectionState as QState,
   QNLocalAudioTrack,
   QNLocalAudioTrackStats,
   QNLocalVideoTrack,
   QNLocalVideoTrackStats,
+  QNTrack,
 } from 'qnweb-rtc'
 import {
   Fragment,
+  useContext,
   useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
 } from 'react'
 import Draggable from 'react-draggable'
-import { Client } from '../api'
+import { useParams } from 'react-router'
+import { client } from '../api'
+import { StageContext } from '../pages/room'
 
-type _Props = {
-  roomId: string
+export type DetailPanelProps = {
+  tracks: (QNTrack | null)[]
 }
 
-export default function DetailPanel({ roomId }: _Props) {
+export default function DetailPanel({ tracks }: DetailPanelProps) {
+  const { roomId } = useParams()
   const theme = useTheme()
+  const { track } = useContext(StageContext)
 
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
 
-  const { publishedTracks, connectionState } = useSyncExternalStore(
-    Client.register,
-    Client.getSnapshot
-  )
-
   // seperate tracks & add device tags
   const [audioTracks, videoTracks] = useMemo(
     () => [
-      publishedTracks
-        .filter((t): t is QNLocalAudioTrack => t.isAudio())
+      tracks
+        .filter(
+          (t): t is QNLocalAudioTrack =>
+            t != null && t.isAudio() && t.trackID != undefined
+        )
         .map((t) => {
           const label = t.getMediaStreamTrack()?.label
           t.tag =
             label == 'MediaStreamAudioDestinationNode' ? '默认录音设备' : label
           return t
         }),
-      publishedTracks
-        .filter((t): t is QNLocalVideoTrack => t.isVideo())
+      tracks
+        .filter(
+          (t): t is QNLocalVideoTrack =>
+            t != null && t.isVideo() && t.trackID != undefined
+        )
         .map((t) => {
           t.tag = t.getMediaStreamTrack()?.label
           return t
         }),
     ],
-    [publishedTracks]
+    [tracks]
   )
 
   const refreshInterval = 500
@@ -70,7 +77,7 @@ export default function DetailPanel({ roomId }: _Props) {
     setAudioStats(
       audioTracks.map((t) => [t.tag ?? 'Unknown Device', t.getStats()])
     )
-    // TODO: why this happens
+    // TODO: why stats []
     setVideoStats(
       videoTracks.map((t) => [t.tag ?? 'Unknown Device', t.getStats().pop()!])
     )
@@ -81,6 +88,14 @@ export default function DetailPanel({ roomId }: _Props) {
       clearInterval(id)
     }
   }, [refreshInterval])
+
+  const [state, setState] = useState<QState>(QState.DISCONNECTED)
+  useEffect(() => {
+    client.addListener('connection-state-changed', setState)
+    return () => {
+      client.removeListener('connection-state-changed', setState)
+    }
+  }, [])
 
   return (
     <Draggable bounds="body" handle="#handle">
@@ -117,7 +132,7 @@ export default function DetailPanel({ roomId }: _Props) {
             pl="1ch"
             fontWeight={700}
           >
-            {connectionState}
+            {state}
           </Typography>
           <IconButton
             onClick={handleCopyInvitation}
@@ -139,32 +154,46 @@ export default function DetailPanel({ roomId }: _Props) {
           }}
         >
           {audioStats
-            ? audioStats.flatMap(([tag, stat]) => {
+            ? audioStats.map(([tag, stat], i) => {
                 const { uplinkBitrate, uplinkLostRate } = stat
-                return [
-                  Title(tag),
-                  Line(
-                    '音频丢包率',
-                    uplinkLostRate == 0 ? '0%' : uplinkLostRate.toFixed(1) + '%'
-                  ),
-                  Line('音频码率', (uplinkBitrate / 1024).toFixed(3) + ' Kbps'),
-                ]
+                return (
+                  <Fragment key={tag + i}>
+                    {Title(tag)}
+                    {Line(
+                      '音频丢包率',
+                      uplinkLostRate == 0
+                        ? '0%'
+                        : uplinkLostRate.toFixed(1) + '%'
+                    )}
+                    {Line(
+                      '音频码率',
+                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps'
+                    )}
+                  </Fragment>
+                )
               })
             : null}
           {videoStats
-            ? videoStats.flatMap(([tag, stat]) => {
+            ? videoStats.map(([tag, stat], i) => {
                 if (!stat) {
-                  return <>{tag}</>
+                  return <Fragment key={tag + i}>{Title(tag)}</Fragment>
                 }
                 const { uplinkBitrate, uplinkLostRate } = stat
-                return [
-                  Title(tag),
-                  Line(
-                    '视频丢包率',
-                    uplinkLostRate == 0 ? '0%' : uplinkLostRate.toFixed(1) + '%'
-                  ),
-                  Line('视频码率', (uplinkBitrate / 1024).toFixed(3) + ' Kbps'),
-                ]
+                return (
+                  <Fragment key={tag + i}>
+                    {Title(tag)}
+                    {Line(
+                      '视频丢包率',
+                      uplinkLostRate == 0
+                        ? '0%'
+                        : uplinkLostRate.toFixed(1) + '%'
+                    )}
+                    {Line(
+                      '视频码率',
+                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps'
+                    )}
+                  </Fragment>
+                )
               })
             : null}
         </Box>
@@ -183,7 +212,7 @@ export default function DetailPanel({ roomId }: _Props) {
 
   function Line(key: string, value: string) {
     return (
-      <Fragment key={key}>
+      <>
         <Typography
           variant="body2"
           sx={{
@@ -195,7 +224,7 @@ export default function DetailPanel({ roomId }: _Props) {
         <Typography variant="body2" align="left">
           {value}
         </Typography>
-      </Fragment>
+      </>
     )
   }
 }
