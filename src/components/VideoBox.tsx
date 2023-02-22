@@ -47,6 +47,25 @@ export default function VideoBox({
     } else {
       videoTrack.play(target, { mirror: false })
     }
+
+    // clear Effect from outer state changes
+    if (pinned) {
+      return () => {
+        setPinnedTrack((possibleNewTrack) => {
+          // `pinnedTrack` from current closure is the old track
+
+          if (pinnedTrack != possibleNewTrack) {
+            // if there's a new track set when clearing effects
+            // keep it (next pinned track)
+            return possibleNewTrack
+          } else {
+            // if it's just the same old track, and need a dispose
+            // clear it (no pinned track)
+            return undefined
+          }
+        })
+      }
+    }
     // }, [target, mirror])
   }, [boxRef.current, videoTrack, pinned])
 

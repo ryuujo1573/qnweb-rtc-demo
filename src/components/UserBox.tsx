@@ -110,12 +110,18 @@ export default function UserBox({ user }: UserBoxProps) {
 
   const theme = useTheme()
   const [audioTarget, setAudioTarget] = useState<HTMLDivElement | null>(null)
-  if (audioTarget) {
-    if (audioTracks) {
-      const subscribed = audioTracks.filter((t) => t.isSubscribed())
-      subscribed.forEach((t) => t.play(audioTarget))
+
+  useEffect(() => {
+    if (audioTarget) {
+      if (audioTracks) {
+        const subscribed = audioTracks.filter((t) => t.isSubscribed())
+        subscribed.forEach((t) => t.play(audioTarget))
+        // this should execute only once
+        // track.play introduces side effects (audio elements),
+        // which will be cleaned with DOM removal
+      }
     }
-  }
+  }, [audioTarget])
 
   return (
     <Box
@@ -156,8 +162,9 @@ export default function UserBox({ user }: UserBoxProps) {
             },
           },
           ':hover': {
-            bgcolor: 'black',
-            backgroundBlendMode: 'darken',
+            bgcolor: '#00000080',
+            color: 'whitesmoke',
+            mixBlendMode: 'normal',
           },
         }}
       >
@@ -181,10 +188,10 @@ export default function UserBox({ user }: UserBoxProps) {
           children={<span>{user.userID.slice(0, 2)}</span>}
         />
       ) : undefined}
-      {...videoTracks.map((track) => {
+      {...videoTracks.map((track, i) => {
         return (
           <VideoBox
-            key={user.userID}
+            key={user.userID + 'v' + i}
             videoTrack={track}
             sx={{
               height: '180px',
@@ -193,8 +200,8 @@ export default function UserBox({ user }: UserBoxProps) {
         )
       })}
       {...videoTracks.length == 0
-        ? audioTracks.map((track) => {
-            return <AudioWave track={track} />
+        ? audioTracks.map((track, i) => {
+            return <AudioWave key={user.userID + 'a' + i} track={track} />
           })
         : []}
     </Box>

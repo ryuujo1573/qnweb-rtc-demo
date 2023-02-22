@@ -76,6 +76,7 @@ export default function Layout() {
         sx={{
           marginInlineStart: 'auto',
           position: 'fixed',
+          top: 0,
           right: 0,
         }}
       >
