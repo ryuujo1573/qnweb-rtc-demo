@@ -49,26 +49,6 @@ export interface RemoteUser {
   audioTracks: QNRemoteAudioTrack[]
 }
 
-function isAudioTrack<T extends QNTrack>(
-  track: T
-): track is T extends QNLocalTrack
-  ? QNLocalAudioTrack
-  : T extends QNRemoteTrack
-  ? QNRemoteAudioTrack
-  : any {
-  return track.isAudio()
-}
-
-function isVideoTrack<T extends QNTrack>(
-  track: T
-): track is T extends QNLocalTrack
-  ? QNLocalVideoTrack
-  : T extends QNRemoteTrack
-  ? QNRemoteVideoTrack
-  : any {
-  return track.isVideo()
-}
-
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
 export const StageContext = createContext<{
@@ -169,8 +149,10 @@ export default function RoomPage() {
     [QNScreenVideoTrack | null, QNCustomAudioTrack | null]
   >([null, null])
 
+  // TODO: user device switch setting
   const [micMuted, setMicMuted] = useState(true)
   const [camMuted, setCamMuted] = useState(true)
+  const screenSharing = screenVideo != null
 
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>()
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>()
@@ -179,43 +161,34 @@ export default function RoomPage() {
   // handle track mute & unmute
   useEffect(() => {
     if (isConnected(state)) {
-      if (!camMuted) {
-        if (camTrack == null) {
-          QNRTC.createCameraVideoTrack({
-            cameraId,
-          }).then(async (track) => {
-            await client.publish(track)
-            setCamTrack(track)
-          })
-        } else {
-          camTrack.setMuted(false)
-        }
-      } else {
-        if (camTrack != null) {
-          client.unpublish(camTrack).then(() => {
-            setCamTrack(null)
-            camTrack.destroy()
-          })
-        }
+      // create `camTrack` only if set unmuted to true
+      if (!camMuted && camTrack == null) {
+        QNRTC.createCameraVideoTrack({
+          cameraId,
+        }).then(async (track) => {
+          await client.publish(track)
+          setCamTrack(track)
+        })
+      } else if (camMuted && camTrack != null) {
+        client.unpublish(camTrack).then(() => {
+          setCamTrack(null)
+          camTrack.destroy()
+        })
       }
-      if (!micMuted) {
-        if (micTrack == null) {
-          QNRTC.createMicrophoneAudioTrack({
-            microphoneId,
-          }).then(async (track) => {
-            await client.publish(track)
-            setMicTrack(track)
-          })
-        } else {
-          micTrack.setMuted(false)
-        }
-      } else {
-        if (micTrack != null) {
-          client.unpublish(micTrack).then(() => {
-            setMicTrack(null)
-            micTrack.destroy()
-          })
-        }
+
+      // the same logic as camera
+      if (!micMuted && micTrack == null) {
+        QNRTC.createMicrophoneAudioTrack({
+          microphoneId,
+        }).then(async (track) => {
+          await client.publish(track)
+          setMicTrack(track)
+        })
+      } else if (micMuted && micTrack != null) {
+        client.unpublish(micTrack).then(() => {
+          setMicTrack(null)
+          micTrack.destroy()
+        })
       }
     } else if (!isConnecting(state)) {
       // clean up if disconnected
@@ -251,13 +224,6 @@ export default function RoomPage() {
 
   const pinnedBoxRef = useRef<HTMLDivElement>()
 
-  // useEffect(() => {
-  //   if (pinnedBoxRef.current && pinnedVisualTrack) {
-  //     pinnedVisualTrack.play(pinnedBoxRef.current, { mirror: false })
-  //     setShowPinnedButton(true)
-  //   }
-  // }, [showPinnedButton, pinnedVisualTrack, pinnedBoxRef.current])
-
   const [pinnedTrack, setPinnedTrack] = useState<QNVisualTrack>()
   const stageContextValue = useMemo(
     () => ({
@@ -275,8 +241,6 @@ export default function RoomPage() {
         component="header"
         sx={{
           display: 'flex',
-          zIndex: 0,
-          top: '0',
           width: '100%',
           bgcolor: '#aaaaaa10',
           justifyContent: 'center',
@@ -289,16 +253,20 @@ export default function RoomPage() {
       <Box
         component="main"
         sx={{
-          position: 'flex',
           flex: 1,
+          position: 'relative',
+          display: 'flex',
         }}
       >
         <Box
           ref={pinnedBoxRef}
           sx={{
-            position: 'relative',
-            width: '100%',
-            height: '100%',
+            display: 'contents',
+            backgroundColor: 'black',
+            '&>video': {
+              width: 'inherit !important',
+              margin: 'auto',
+            },
           }}
         >
           <IconButton
@@ -307,7 +275,7 @@ export default function RoomPage() {
               right: 0,
               top: 0,
               zIndex: 10,
-              display: pinnedTrack ? 'inherit' : 'none',
+              display: pinnedTrack ? 'static' : 'none',
             }}
             onClick={() => {
               // startTransition(() => {
@@ -332,13 +300,20 @@ export default function RoomPage() {
           />
         ) : undefined}
       </Box>
-      <footer>
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: '1ch',
-          }}
-        >
+      <Box
+        component="footer"
+        sx={{
+          position: 'fixed',
+          height: '60px',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Box>
           <Tooltip
             arrow
             leaveDelay={200}
@@ -442,16 +417,37 @@ export default function RoomPage() {
           <Tooltip leaveDelay={200} title={'屏幕共享'}>
             <span>
               <IconButton
-                onClick={() => {}}
+                onClick={onScreenShareClick}
+                color={screenSharing ? 'primary' : 'default'}
                 disabled={!isConnected(state)}
                 children={<ScreenShareRounded />}
               />
             </span>
           </Tooltip>
         </Box>
-      </footer>
+      </Box>
     </StageContext.Provider>
   )
+
+  async function onScreenShareClick(
+    _evt: React.MouseEvent<Element, MouseEvent>
+  ) {
+    if (screenSharing == false) {
+      const track = await QNRTC.createScreenVideoTrack({}, 'auto')
+      await client.publish(track)
+      setScreenShare(Array.isArray(track) ? track : [track, null])
+    } else {
+      setScreenShare((oldTracks) => {
+        oldTracks.forEach((t) => {
+          if (t) {
+            client.unpublish(t)
+            t.destroy()
+          }
+        })
+        return [null, null]
+      })
+    }
+  }
 
   async function joinRoom() {
     const resp = await fetch(
@@ -510,7 +506,6 @@ export default function RoomPage() {
         setUsers((users) => {
           const user = users.find((u) => u.userID == uid)!
           const removalIds = qntracks.map((t) => t.trackID!)
-          debugger
           user.audioTracks = user.audioTracks.filter(
             (t) => !removalIds.includes(t.trackID!)
           )
