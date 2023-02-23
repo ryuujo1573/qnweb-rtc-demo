@@ -38,7 +38,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
-
+  console.log('#tracks', [...tracks])
   // seperate tracks & add device tags
   const [audioTracks, videoTracks] = useMemo(
     () => [
@@ -87,7 +87,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     return () => {
       clearInterval(id)
     }
-  }, [refreshInterval])
+  }, [refreshInterval, tracks])
 
   const [state, setState] = useState<QState>(QState.DISCONNECTED)
   useEffect(() => {
