@@ -35,6 +35,14 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
   const theme = useTheme()
   const { track } = useContext(StageContext)
 
+  const [state, setState] = useState<QState>(QState.DISCONNECTED)
+  useEffect(() => {
+    client.addListener('connection-state-changed', setState)
+    return () => {
+      client.removeListener('connection-state-changed', setState)
+    }
+  }, [])
+
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
@@ -82,20 +90,16 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
       videoTracks.map((t) => [t.tag ?? 'Unknown Device', t.getStats().pop()!])
     )
   }
-  useEffect(() => {
-    const id = setInterval(refresh, refreshInterval)
-    return () => {
-      clearInterval(id)
-    }
-  }, [refreshInterval, tracks])
 
-  const [state, setState] = useState<QState>(QState.DISCONNECTED)
+  const autoRefresh = state == QState.CONNECTED || state == QState.RECONNECTED
   useEffect(() => {
-    client.addListener('connection-state-changed', setState)
-    return () => {
-      client.removeListener('connection-state-changed', setState)
+    if (autoRefresh) {
+      const id = setInterval(refresh, refreshInterval)
+      return () => {
+        clearInterval(id)
+      }
     }
-  }, [])
+  }, [refreshInterval, tracks, autoRefresh])
 
   return (
     <Draggable bounds="body" handle="#handle">
