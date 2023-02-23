@@ -13,14 +13,7 @@ import {
   QNLocalVideoTrackStats,
   QNTrack,
 } from 'qnweb-rtc'
-import {
-  Fragment,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-} from 'react'
+import { Fragment, useContext, useEffect, useMemo, useState } from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
 import { client } from '../api'
@@ -33,7 +26,7 @@ export type DetailPanelProps = {
 export default function DetailPanel({ tracks }: DetailPanelProps) {
   const { roomId } = useParams()
   const theme = useTheme()
-  const { track } = useContext(StageContext)
+  // const { track: pinnedTrack } = useContext(StageContext)
 
   const [state, setState] = useState<QState>(QState.DISCONNECTED)
   useEffect(() => {
@@ -46,8 +39,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
   const handleCopyInvitation = () => {
     navigator.clipboard.writeText(window.location.href)
   }
-  console.log('#tracks', [...tracks])
-  // seperate tracks & add device tags
+  // seperate tracks & store device labels in tags
   const [audioTracks, videoTracks] = useMemo(
     () => [
       tracks
@@ -82,16 +74,21 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     useState<[string, QNLocalVideoTrackStats][]>()
 
   function refresh() {
-    setAudioStats(
-      audioTracks.map((t) => [t.tag ?? 'Unknown Device', t.getStats()])
-    )
-    // TODO: why stats []
-    setVideoStats(
-      videoTracks.map((t) => [t.tag ?? 'Unknown Device', t.getStats().pop()!])
-    )
+    setAudioStats(audioTracks.map((t) => [template(t), t.getStats()]))
+    // TODO: why stats is an array
+    setVideoStats(videoTracks.map((t) => [template(t), t.getStats().pop()!]))
+
+    function template(t: QNLocalAudioTrack | QNLocalVideoTrack): string {
+      // get tag string for stats display
+      const trackName = t.tag ?? `未知${t.isAudio() ? '音频' : '视频'}轨道`
+      // const extra = Object.is(t, pinnedTrack) ? ' (已固定)' : ''
+      return trackName
+    }
   }
 
-  const autoRefresh = state == QState.CONNECTED || state == QState.RECONNECTED
+  const autoRefresh =
+    (state == QState.CONNECTED || state == QState.RECONNECTED) &&
+    tracks.length > 0
   useEffect(() => {
     if (autoRefresh) {
       const id = setInterval(refresh, refreshInterval)
