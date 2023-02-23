@@ -10,13 +10,19 @@ interface Settings {
   appId: string
   facingMode: FacingMode
   mirror: boolean
+  liveStreamBaseUrl: string
+  sei: string | null
 }
 
 const initialState: Settings = {
   themeCode: (localStorage.getItem('color-theme') as ThemeCode) ?? 'dark',
-  appId: localStorage.getItem('appId') ?? 'd8lk7l4ed', // demo only
-  facingMode: (localStorage.getItem('facingMode') as FacingMode) ?? 'user',
+  appId: localStorage.getItem('app-id') ?? 'd8lk7l4ed', // demo only
+  facingMode: (localStorage.getItem('facing-mode') as FacingMode) ?? 'user',
   mirror: localStorage.getItem('mirror') == 'true' ?? false,
+  liveStreamBaseUrl:
+    localStorage.getItem('livestream-url') ??
+    'rtmp://pili-publish.qnsdk.com/sdk-live/',
+  sei: 'timestamp: ${ts}',
 }
 
 export const settingSlice = createSlice({
@@ -29,14 +35,18 @@ export const settingSlice = createSlice({
     },
     setAppId: (state, { payload: appId }: PayloadAction<string>) => {
       state.appId = appId
-      localStorage.setItem('appId', appId)
+      localStorage.setItem('app-id', appId)
+    },
+    setLiveStreamBaseUrl: (state, { payload: url }: PayloadAction<string>) => {
+      state.liveStreamBaseUrl = url
+      localStorage.setItem('livestream-url', url)
     },
     updateFacingMode(
       state,
       { payload: facingMode }: PayloadAction<FacingMode>
     ) {
       state.facingMode = facingMode
-      localStorage.setItem('facingMode', facingMode)
+      localStorage.setItem('facing-mode', facingMode)
     },
     toggleMirror(state, { payload: mirror }: PayloadAction<boolean>) {
       state.mirror = mirror
@@ -45,7 +55,12 @@ export const settingSlice = createSlice({
   },
 })
 
-export const { setTheme, setAppId, updateFacingMode, toggleMirror } =
-  settingSlice.actions
+export const {
+  setTheme,
+  setAppId,
+  setLiveStreamBaseUrl,
+  updateFacingMode,
+  toggleMirror,
+} = settingSlice.actions
 export const selectTheme = (state: RootState) => state.settings.themeCode
 export default settingSlice.reducer

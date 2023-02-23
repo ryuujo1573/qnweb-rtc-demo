@@ -1,8 +1,15 @@
 import { getPassedTimeDesc } from './datetime'
 import { useDebounce } from './hooks'
 import { stringToColor } from './avatar'
+import { isAudioTrack, isVideoTrack } from './typing'
 
-export { getPassedTimeDesc, useDebounce, stringToColor }
+export {
+  getPassedTimeDesc,
+  useDebounce,
+  stringToColor,
+  isAudioTrack,
+  isVideoTrack,
+}
 
 export const checkUserId = (v: string) => /^\w{1,24}$/.test(v)
 

@@ -1,29 +1,38 @@
 import {
   CallEndRounded,
   CloseRounded,
+  LayersRounded,
   MicOffRounded,
   MicRounded,
   RestartAltRounded,
   ScreenShareRounded,
+  StreamRounded,
   TuneRounded,
   VideocamOffRounded,
   VideocamRounded,
 } from '@mui/icons-material'
-import { Box, Button, IconButton, useTheme, Tooltip } from '@mui/material'
+import {
+  Box,
+  Button,
+  IconButton,
+  useTheme,
+  Tooltip,
+  ToggleButtonGroup,
+  ToggleButton,
+  Fade,
+} from '@mui/material'
 import QNRTC, {
   QNCameraVideoTrack,
   QNConnectionDisconnectedInfo,
   QNConnectionState as QState,
   QNCustomAudioTrack,
-  QNLocalAudioTrack,
-  QNLocalTrack,
+  QNLiveStreamingState as QLiveState,
   QNLocalVideoTrack,
   QNMicrophoneAudioTrack,
   QNRemoteAudioTrack,
   QNRemoteTrack,
   QNRemoteVideoTrack,
   QNScreenVideoTrack,
-  QNTrack,
 } from 'qnweb-rtc'
 import React, {
   MouseEventHandler,
@@ -33,6 +42,7 @@ import React, {
   createContext,
   useMemo,
 } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
 import { client } from '../api'
 
@@ -40,6 +50,7 @@ import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { error, message } from '../features/messageSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkUserId, checkRoomId } from '../utils'
+import { useTopRightBox } from './layout'
 
 export interface RemoteUser {
   userID: string
@@ -80,7 +91,9 @@ export default function RoomPage() {
   ) {
     navigate('/')
   }
-  const { mirror, facingMode, appId } = useAppSelector((s) => s.settings)
+  const { mirror, facingMode, appId, liveStreamBaseUrl } = useAppSelector(
+    (s) => s.settings
+  )
 
   // session states
   const [state, setState] = useState(QState.DISCONNECTED)
@@ -143,6 +156,7 @@ export default function RoomPage() {
   const [playbackId, setPlaybackId] = useState<string>('default')
   const [cameraId, setCameraId] = useState<string>('default')
   const [microphoneId, setMicrophoneId] = useState<string>('default')
+
   const [camTrack, setCamTrack] = useState<QNCameraVideoTrack | null>(null)
   const [micTrack, setMicTrack] = useState<QNMicrophoneAudioTrack | null>(null)
   const [[screenVideo, screenAudio], setScreenShare] = useState<
@@ -237,6 +251,7 @@ export default function RoomPage() {
   return (
     <StageContext.Provider value={stageContextValue}>
       <DetailPanel tracks={[camTrack, micTrack, screenVideo, screenAudio]} />
+      <StreamingToggle />
       <Box
         component="header"
         sx={{
@@ -429,13 +444,100 @@ export default function RoomPage() {
     </StageContext.Provider>
   )
 
+  function StreamingToggle() {
+    const ref = useTopRightBox()
+
+    const [liveMode, setLiveMode] = useState<string>('direct')
+    // const [on, toggle] = useState(false)
+    const [liveState, setLiveState] = useState(QLiveState.STOPPED)
+    const on = liveState == QLiveState.STARTED
+
+    const handleLiveToggle = async () => {
+      if (!on) {
+        await client.startDirectLiveStreaming({
+          videoTrack: screenVideo ?? camTrack ?? undefined,
+          audioTrack: micTrack ?? screenVideo ?? undefined,
+          streamID: roomId!,
+          url: liveStreamBaseUrl + roomId!,
+        })
+      } else {
+        await client.stopDirectLiveStreaming(roomId!)
+      }
+    }
+
+    useEffect(() => {
+      client.addListener('direct-livestreaming-state-changed', handler)
+
+      return () => {
+        client.removeListener('direct-livestreaming-state-changed', handler)
+      }
+
+      function handler(_streamId: string, state: QLiveState) {
+        setLiveState(state)
+      }
+    }, [])
+
+    return ref.current ? (
+      createPortal(
+        <>
+          <ToggleButton
+            value="switch"
+            disabled={!isConnected(state)}
+            selected={on}
+            color={on ? 'error' : 'primary'}
+            onChange={handleLiveToggle}
+          >
+            {on ? '结束推流' : '开启推流'}
+          </ToggleButton>
+          <Fade in={on}>
+            <ToggleButtonGroup
+              disabled={!on}
+              aria-label="livestreaming mode switch"
+              value={liveMode}
+              exclusive
+              color="primary"
+              onChange={(_evt, mode) => setLiveMode(mode)}
+            >
+              <ToggleButton value={'direct'} aria-label="direct livestreaming">
+                <StreamRounded />
+                单路转推
+              </ToggleButton>
+              <ToggleButton
+                value={'composed'}
+                aria-label="composed livestreaming"
+              >
+                <LayersRounded />
+                合流转推
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Fade>
+        </>,
+        ref.current
+      )
+    ) : (
+      <></>
+    )
+  }
+
   async function onScreenShareClick(
     _evt: React.MouseEvent<Element, MouseEvent>
   ) {
     if (screenSharing == false) {
-      const track = await QNRTC.createScreenVideoTrack({}, 'auto')
-      await client.publish(track)
-      setScreenShare(Array.isArray(track) ? track : [track, null])
+      const result = await QNRTC.createScreenVideoTrack({}, 'auto')
+      await client.publish(result)
+      if (Array.isArray(result)) {
+        const [screenVideo, _screenAudio] = result
+        setScreenShare(result)
+        screenVideo.on('ended', function () {
+          setScreenShare([null, null])
+        })
+      } else {
+        const screenVideo = result
+        setScreenShare([screenVideo, null])
+        screenVideo.on('ended', function () {
+          setScreenShare([null, null])
+        })
+      }
     } else {
       setScreenShare((oldTracks) => {
         oldTracks.forEach((t) => {
