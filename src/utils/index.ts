@@ -28,3 +28,9 @@ export function debounce(fn: Function, interval: number) {
     timeout = window.setTimeout(fn, interval, ...args)
   }
 }
+
+export function getRandomId(): string {
+  const result = Math.floor(Math.random() * 2 ** 64).toString(16)
+  console.info('randomID', result)
+  return result
+}
