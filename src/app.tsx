@@ -12,7 +12,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 
 import { reset } from './features/messageSlice'
 import { selectTheme } from './features/settingSlice'
-import { ErrorPage, Layout, RoomPage, SetupPage } from './pages'
+import { ErrorPage, Layout, LiveRoomPage, RoomPage, SetupPage } from './pages'
 import { useAppDispatch, useAppSelector } from './store'
 
 const router = createBrowserRouter(
@@ -29,6 +29,10 @@ const router = createBrowserRouter(
         {
           path: 'room/:roomId',
           element: <RoomPage />,
+        },
+        {
+          path: 'live/:liveId',
+          element: <LiveRoomPage />,
         },
       ],
     },

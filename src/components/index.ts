@@ -1,19 +1,21 @@
+import AudioWave from './AudioWave'
 import CustomTextField from './CustomTextField'
-import UserDialog from './UserDialog'
-import VideoPreview from './VideoPreview'
 import DetailPanel from './DetailPanel'
-import VideoBox from './VideoBox'
 import TooltipList from './TooltipList'
 import UserBox from './UserBox'
-import AudioWave from './AudioWave'
+import UserDialog from './UserDialog'
+import VideoBox from './VideoBox'
+import VideoPlayer from './VideoPlayer'
+import VideoPreview from './VideoPreview'
 
 export {
+  AudioWave,
   CustomTextField,
-  UserDialog,
-  VideoPreview,
   DetailPanel,
-  VideoBox,
   TooltipList,
   UserBox,
-  AudioWave,
+  UserDialog,
+  VideoBox,
+  VideoPlayer,
+  VideoPreview,
 }

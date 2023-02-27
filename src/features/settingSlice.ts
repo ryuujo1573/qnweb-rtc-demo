@@ -21,7 +21,7 @@ const initialState: Settings = {
   mirror: localStorage.getItem('mirror') == 'true' ?? false,
   liveStreamBaseUrl:
     localStorage.getItem('livestream-url') ??
-    'rtmp://pili-publish.qnsdk.com/sdk-live/',
+    'rtmp://pili-publish.qnsdk.com/sdk-live',
   sei: 'timestamp: ${ts}',
 }
 

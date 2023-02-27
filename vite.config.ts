@@ -1,13 +1,24 @@
 import { defineConfig } from 'vite'
-import React from '@vitejs/plugin-react-swc'
-import FullReload from 'vite-plugin-full-reload'
+import react from '@vitejs/plugin-react-swc'
+import fullReload from 'vite-plugin-full-reload'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    React({
+    react({
       tsDecorators: true,
     }),
-    FullReload(['src/pages/room.tsx']),
+    fullReload(['src/pages/room.tsx']),
+    // basicSsl(),
   ],
+  resolve: {
+    alias: {
+      'hls.js': 'hls.js/dist/hls.min.js',
+    },
+  },
+  server: {
+    host: '0.0.0.0',
+    // https: true,
+  },
 })
