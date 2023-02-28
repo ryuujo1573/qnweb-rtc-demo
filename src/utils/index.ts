@@ -11,6 +11,14 @@ export {
   isVideoTrack,
 }
 
+export function getRtmpUrl(path: string, serialNum?: string | number): string {
+  const base = `rtmp://pili-publish.qnsdk.com/sdk-live/${path}`
+  if (serialNum) {
+    return base + `?serialnum=${serialNum}`
+  }
+  return base
+}
+
 export const checkUserId = (v: string) => /^\w{1,24}$/.test(v)
 
 export const checkRoomId = (v: string) => /^[0-9a-zA-Z_-]{3,64}$/.test(v)
@@ -33,4 +41,8 @@ export function getRandomId(): string {
   const result = Math.floor(Math.random() * 2 ** 64).toString(16)
   console.info('randomID', result)
   return result
+}
+
+export function notNull<T>(t: T): t is Exclude<T, null> {
+  return t !== null
 }

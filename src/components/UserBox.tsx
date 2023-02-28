@@ -21,8 +21,8 @@ import {
 } from 'qnweb-rtc'
 import { useDebugValue, useEffect, useState } from 'react'
 import { client } from '../api'
-import { RemoteUser } from '../pages/room'
-import { stringToColor } from '../utils'
+import refStore, { RemoteUser } from '../features/tracks'
+import { isAudioTrack, isVideoTrack, stringToColor } from '../utils'
 import AudioWave from './AudioWave'
 import VideoBox from './VideoBox'
 
@@ -77,8 +77,9 @@ function getQualityIcon(networkQuality: Quality) {
 
 export default function UserBox({ user }: UserBoxProps) {
   // debugger
-  const videoTracks = user.videoTracks
-  const audioTracks = user.audioTracks
+  const userTracks = refStore.queryRemoteTracks(user.trackIds)
+  const videoTracks = userTracks.filter(isVideoTrack)
+  const audioTracks = userTracks.filter(isAudioTrack)
 
   const icon = (
     <VerifiedUserRounded

@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { App } from './app'
 import { store } from './store'
+import './utils/extension'
 import './index.css'
 
 const root = document.getElementById('root')!

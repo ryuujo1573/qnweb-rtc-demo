@@ -47,16 +47,10 @@ import { client } from '../api'
 import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { StreamingControl } from '../components/StreamPanel'
 import { error, message } from '../features/messageSlice'
+import { updateDirectConfig } from '../features/streamSlice'
+import refStore, { RemoteUser } from '../features/tracks'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkUserId, checkRoomId } from '../utils'
-
-export interface RemoteUser {
-  userID: string
-  userData?: string
-  state: QState
-  videoTracks: QNRemoteVideoTrack[]
-  audioTracks: QNRemoteAudioTrack[]
-}
+import { checkUserId, checkRoomId, notNull } from '../utils'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -169,6 +163,12 @@ export default function RoomPage() {
   const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>()
   const [playbacks, setPlaybacks] = useState<MediaDeviceInfo[]>()
 
+  ;[camTrack, micTrack, screenVideo, screenAudio]
+    .filter(notNull)
+    .forEach((t) => {
+      refStore.localTracks.set(t.trackID!, t)
+    })
+
   // handle track mute & unmute
   useEffect(() => {
     if (isConnected) {
@@ -212,7 +212,16 @@ export default function RoomPage() {
         setMicTrack(null)
       }
     }
-  }, [state, camMuted, micMuted, camTrack, micTrack])
+  }, [state, camMuted, micMuted])
+
+  useEffect(() => {
+    dispatch(
+      updateDirectConfig({
+        videoTrackId: camTrack?.trackID!,
+        audioTrackId: micTrack?.trackID!,
+      })
+    )
+  }, [camTrack, micTrack])
 
   // TODO: throttle
   const onCallButtonClick =
@@ -251,8 +260,8 @@ export default function RoomPage() {
       <StreamingControl
         {...{
           state,
-          videoTrack: camTrack ?? undefined,
-          audioTrack: micTrack ?? undefined,
+          // videoTracks: [camTrack, screenVideo].filter(notNull),
+          // audioTracks: [micTrack, screenAudio].filter(notNull),
         }}
       />
       <Box
@@ -505,16 +514,21 @@ export default function RoomPage() {
       setUsers((users) => [
         ...users,
         {
-          userData,
           userID: uid,
+          userData,
           state: QState.CONNECTED,
-          videoTracks: [],
-          audioTracks: [],
+          trackIds: [],
         },
       ])
     })
     client.addListener('user-left', (uid: string) => {
-      setUsers((users) => users.filter((u) => u.userID != uid))
+      setUsers((users) => {
+        const user = users.find((u) => u.userID == uid)!
+        for (const trackId of user.trackIds) {
+          refStore.remoteTracks.delete(trackId)
+        }
+        return users.filter((u) => u != user)
+      })
     })
     client.addListener(
       'user-published',
@@ -523,28 +537,31 @@ export default function RoomPage() {
         const { audioTracks, videoTracks } = await client.subscribe(qntracks)
         setUsers((users) => {
           const user = users.find((u) => u.userID == uid)!
-          user.audioTracks.push(...audioTracks)
-          user.videoTracks.push(...videoTracks)
-          console.log('user', user)
+          for (const track of [...audioTracks, ...videoTracks]) {
+            // record track id & save track
+            user.trackIds.push(track.trackID!)
+            refStore.remoteTracks.set(track.trackID!, track)
+          }
           return users.slice()
         })
       }
     )
     client.addListener(
       'user-unpublished',
-      async (uid: string, qntracks: QNRemoteTrack[]) => {
+      async (uid: string, unpublishingTracks: QNRemoteTrack[]) => {
         setUsers((users) => {
           const user = users.find((u) => u.userID == uid)!
-          const removalIds = qntracks.map((t) => t.trackID!)
-          user.audioTracks = user.audioTracks.filter(
-            (t) => !removalIds.includes(t.trackID!)
-          )
-          user.videoTracks = user.videoTracks.filter(
-            (t) => !removalIds.includes(t.trackID!)
-          )
+          const removalIds = unpublishingTracks
+            .map((t) => t.trackID!)
+            // double confimation for removing IDs
+            .filter((tid) => user.trackIds.includes(tid))
+
+          for (const trackId of removalIds) {
+            refStore.remoteTracks.delete(trackId)
+          }
           return users.slice()
         })
-        // await client.unsubscribe(qntracks)
+        // await client.unsubscribe(unpublishingTracks)
       }
     )
     client.addListener('user-reconnecting', (uid: string) => {
