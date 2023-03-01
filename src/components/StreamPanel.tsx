@@ -129,11 +129,9 @@ export function StreamingControl({ state }: StreamingControlProps) {
     }
   }, [])
 
-  //
-  const [tabValue, setTabValue] = useState(true ? 'composed' : liveMode.slice())
-  const [showConfigPanel, setShowConfigPanel] = useState(true || false)
-  console.log('#', 'showConfigPanel', showConfigPanel)
-  console.log('#', 'tabValue', tabValue)
+  const [tabValue, setTabValue] = useState(liveMode.slice())
+  const [showConfigPanel, setShowConfigPanel] = useState(false)
+
   return ref.current ? (
     createPortal(
       <>
