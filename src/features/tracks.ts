@@ -1,7 +1,6 @@
 import {
   QNLocalTrack,
   QNRemoteTrack,
-  QNTrack,
   QNConnectionState as QState,
   QNRemoteAudioTrack,
   QNRemoteVideoTrack,
@@ -28,7 +27,7 @@ const refStore = {
     return result
   },
   get allTracks() {
-    return Array.of<QNTrack>(
+    return Array.of<QNLocalTrack | QNRemoteTrack>(
       ...this.localTracks.values(),
       ...this.remoteTracks.values()
     )

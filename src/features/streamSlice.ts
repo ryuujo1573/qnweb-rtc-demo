@@ -4,9 +4,8 @@ import {
   QNTranscodingLiveStreamingConfig,
 } from 'qnweb-rtc'
 import { client } from '../api'
-import { store, ThunkAPI } from '../store'
+import { ThunkAPI } from '../store'
 import { delay, getRandomId } from '../utils'
-import { error } from './messageSlice'
 import refStore from './tracks'
 
 type QStream = {
