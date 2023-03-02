@@ -52,6 +52,7 @@ export default function Layout() {
   const theme = useTheme()
   const dispatch = useAppDispatch()
   const { themeCode, mirror } = useAppSelector((s) => s.settings)
+  const { userId } = useAppSelector((s) => s.identity)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [userIdText, setUserIdText] = useState('')
@@ -68,6 +69,12 @@ export default function Layout() {
 
   const topRightBoxRef = useRef<HTMLDivElement>()
 
+  const handleModifyId = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if ('key' in e && e.key != 'Enter') {
+      return
+    }
+    dispatch(updateUserId(userIdText))
+  }
   return (
     <>
       <Outlet context={topRightBoxRef} />
@@ -86,7 +93,7 @@ export default function Layout() {
       >
         <IconButton
           sx={{
-            border: '1px solid ' + theme.palette.primary.main,
+            border: `1px solid ${theme.palette.primary.main}`,
           }}
           color="primary"
           size="large"
@@ -160,13 +167,10 @@ export default function Layout() {
             <TextField
               label="修改userID"
               variant="standard"
+              placeholder={userId ?? undefined}
               value={userIdText}
               onChange={(e) => setUserIdText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key == 'enter' && checkUserId(userIdText)) {
-                  dispatch(updateUserId(userIdText))
-                }
-              }}
+              onKeyDown={handleModifyId}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -176,9 +180,7 @@ export default function Layout() {
                 endAdornment: (
                   <Fade in={checkUserId(userIdText)}>
                     <InputAdornment position="end">
-                      <IconButton
-                        onClick={() => dispatch(updateUserId(userIdText))}
-                      >
+                      <IconButton onClick={handleModifyId}>
                         <CheckRounded />
                       </IconButton>
                     </InputAdornment>
@@ -187,7 +189,10 @@ export default function Layout() {
               }}
             />
           </SectionFragment>
-          <SectionFragment title="视频">
+          <SectionFragment
+            title="视频"
+            // TODO: 支持切换清晰度、默认开启音视频
+          >
             <VideoPreview />
             <ToggleButton
               value={true}
@@ -199,7 +204,7 @@ export default function Layout() {
               <FlipRounded />
             </ToggleButton>
           </SectionFragment>
-          <SectionFragment title="音频"></SectionFragment>
+          <SectionFragment title="测试"></SectionFragment>
           <SectionFragment title="关于">
             <Typography variant="body2" textAlign="left">
               DEMO VERSION:{' '}

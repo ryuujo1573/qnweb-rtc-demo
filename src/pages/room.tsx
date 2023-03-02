@@ -47,6 +47,7 @@ import { client } from '../api'
 import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { StreamingControl } from '../components/StreamPanel'
 import { error, message } from '../features/messageSlice'
+import { checkDevices } from '../features/settingSlice'
 import { updateDirectConfig } from '../features/streamSlice'
 import refStore, { RemoteUser } from '../features/tracks'
 import { useAppDispatch, useAppSelector } from '../store'
@@ -83,9 +84,15 @@ export default function RoomPage() {
   ) {
     navigate('/')
   }
-  const { mirror, facingMode, appId, liveStreamBaseUrl } = useAppSelector(
-    (s) => s.settings
-  )
+  const {
+    mirror,
+    facingMode,
+    appId,
+    liveStreamBaseUrl,
+    cameras,
+    microphones,
+    playbacks,
+  } = useAppSelector((s) => s.settings)
 
   // session states
   const [state, setState] = useState(QState.DISCONNECTED)
@@ -100,34 +107,13 @@ export default function RoomPage() {
       joinRoom()
     }
 
-    // check devices
-    async function checkDevices() {
-      const deviceInfos = await QNRTC.getDevices()
-      const cams = [],
-        mics = [],
-        pbs = []
-      for (const device of deviceInfos) {
-        switch (device.kind) {
-          case 'videoinput':
-            cams.push(device)
-            break
-          case 'audioinput':
-            mics.push(device)
-            break
-          case 'audiooutput':
-            pbs.push(device)
-            break
-        }
-      }
-      setCameras(cams)
-      setMicrophones(mics)
-      setPlaybacks(pbs)
-    }
+    // define handler and set callback
+    const check = () => dispatch(checkDevices())
+    QNRTC.onCameraChanged = check
+    QNRTC.onMicrophoneChanged = check
+    QNRTC.onPlaybackDeviceChanged = check
 
-    checkDevices()
-    QNRTC.onCameraChanged = checkDevices
-    QNRTC.onMicrophoneChanged = checkDevices
-    QNRTC.onPlaybackDeviceChanged = checkDevices
+    check()
 
     return () => {
       client.removeAllListeners()
@@ -154,14 +140,9 @@ export default function RoomPage() {
     [QNScreenVideoTrack | null, QNCustomAudioTrack | null]
   >([null, null])
 
-  // TODO: user device switch setting
   const [micMuted, setMicMuted] = useState(true)
   const [camMuted, setCamMuted] = useState(true)
   const screenSharing = screenVideo != null
-
-  const [cameras, setCameras] = useState<MediaDeviceInfo[]>()
-  const [microphones, setMicrophones] = useState<MediaDeviceInfo[]>()
-  const [playbacks, setPlaybacks] = useState<MediaDeviceInfo[]>()
 
   ;[camTrack, micTrack, screenVideo, screenAudio]
     .filter(notNull)

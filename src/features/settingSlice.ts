@@ -1,9 +1,12 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
+import QNRTC from 'qnweb-rtc'
 import { RootState } from '../store'
 
 export type ThemeCode = 'light' | 'auto' | 'dark'
 
 export type FacingMode = 'environment' | 'user'
+
+type PlainDeviceInfo = Omit<MediaDeviceInfo, 'toJSON'>
 
 interface Settings {
   themeCode: ThemeCode
@@ -12,6 +15,12 @@ interface Settings {
   mirror: boolean
   liveStreamBaseUrl: string
   sei: string | null
+  playbacks: PlainDeviceInfo[]
+  microphones: PlainDeviceInfo[]
+  cameras: PlainDeviceInfo[]
+  defaultCamera?: string
+  defaultMicrophone?: string
+  defaultPlayback?: string
 }
 
 const initialState: Settings = {
@@ -23,7 +32,18 @@ const initialState: Settings = {
     localStorage.getItem('livestream-url') ??
     'rtmp://pili-publish.qnsdk.com/sdk-live',
   sei: 'timestamp: ${ts}',
+  playbacks: [],
+  microphones: [],
+  cameras: [],
 }
+
+export const checkDevices = createAsyncThunk(
+  'checkDevices',
+  async function checkDevices() {
+    const deviceInfos = await QNRTC.getDevices()
+    return deviceInfos.map((info) => info.toJSON())
+  }
+)
 
 export const settingSlice = createSlice({
   name: 'settings',
@@ -52,6 +72,34 @@ export const settingSlice = createSlice({
       state.mirror = mirror
       localStorage.setItem('mirror', mirror ? 'true' : 'false')
     },
+    setDefaultCamera(state, { payload }: PayloadAction<string>) {
+      if (state.cameras.find((p) => p.groupId == payload)) {
+        state.defaultCamera = payload
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(
+      checkDevices.fulfilled,
+      (state, { payload: deviceInfos }) => {
+        state.cameras = []
+        state.microphones = []
+        state.playbacks = []
+        for (const device of deviceInfos) {
+          switch (device.kind) {
+            case 'videoinput':
+              state.cameras.push(device)
+              break
+            case 'audioinput':
+              state.microphones.push(device)
+              break
+            case 'audiooutput':
+              state.playbacks.push(device)
+              break
+          }
+        }
+      }
+    )
   },
 })
 
@@ -61,6 +109,7 @@ export const {
   setLiveStreamBaseUrl,
   updateFacingMode,
   toggleMirror,
+  setDefaultCamera,
 } = settingSlice.actions
 export const selectTheme = (state: RootState) => state.settings.themeCode
 export default settingSlice.reducer
