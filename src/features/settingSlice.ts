@@ -1,12 +1,17 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
-import QNRTC from 'qnweb-rtc'
+import QNRTC, { SUPPORT_VIDEO_ENCODER_CONFIG_LIST } from 'qnweb-rtc'
 import { RootState } from '../store'
 
 export type ThemeCode = 'light' | 'auto' | 'dark'
 
 export type FacingMode = 'environment' | 'user'
 
-type PlainDeviceInfo = Omit<MediaDeviceInfo, 'toJSON'>
+export type PlainDeviceInfo = Omit<MediaDeviceInfo, 'toJSON'>
+
+export type Preset = keyof typeof SUPPORT_VIDEO_ENCODER_CONFIG_LIST
+export function isValidPreset(str: string): str is Preset {
+  return Object.keys(SUPPORT_VIDEO_ENCODER_CONFIG_LIST).includes(str)
+}
 
 interface Settings {
   themeCode: ThemeCode
@@ -21,11 +26,12 @@ interface Settings {
   defaultCamera?: string
   defaultMicrophone?: string
   defaultPlayback?: string
+  cameraPreset: Preset
 }
 
 const initialState: Settings = {
   themeCode: (localStorage.getItem('color-theme') as ThemeCode) ?? 'dark',
-  appId: localStorage.getItem('app-id') ?? 'd8lk7l4ed', // demo only
+  appId: localStorage.getItem('app-id') ?? 'g2m0ya7w7', // demo only
   facingMode: (localStorage.getItem('facing-mode') as FacingMode) ?? 'user',
   mirror: localStorage.getItem('mirror') == 'true' ?? false,
   liveStreamBaseUrl:
@@ -35,6 +41,7 @@ const initialState: Settings = {
   playbacks: [],
   microphones: [],
   cameras: [],
+  cameraPreset: '720p',
 }
 
 export const checkDevices = createAsyncThunk(
@@ -77,6 +84,9 @@ export const settingSlice = createSlice({
         state.defaultCamera = payload
       }
     },
+    updateCameraPreset(state, { payload }: PayloadAction<Preset>) {
+      state.cameraPreset = payload
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(
@@ -110,6 +120,7 @@ export const {
   updateFacingMode,
   toggleMirror,
   setDefaultCamera,
+  updateCameraPreset,
 } = settingSlice.actions
 export const selectTheme = (state: RootState) => state.settings.themeCode
 export default settingSlice.reducer

@@ -1,16 +1,14 @@
-import { Box, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
+import { Box, Skeleton } from '@mui/material'
 import QNRTC, { QNLocalVideoTrack } from 'qnweb-rtc'
 import { useEffect, useRef, useState } from 'react'
-import { setDefaultCamera } from '../features/settingSlice'
-import { useAppDispatch, useAppSelector } from '../store'
+import { useAppSelector } from '../store'
 
 export interface VideoPreviewProps {}
 
 const VideoPreview = (props: VideoPreviewProps) => {
-  const { mirror, facingMode, cameras, defaultCamera } = useAppSelector(
+  const { mirror, facingMode, defaultCamera, cameraPreset } = useAppSelector(
     (s) => s.settings
   )
-  const dispatch = useAppDispatch()
   const boxRef = useRef<HTMLDivElement>()
   const [track, setTrack] = useState<QNLocalVideoTrack>()
   const [showSkeleton, setShown] = useState(true)
@@ -19,6 +17,7 @@ const VideoPreview = (props: VideoPreviewProps) => {
     QNRTC.createCameraVideoTrack({
       facingMode,
       cameraId: defaultCamera,
+      encoderConfig: cameraPreset,
     }).then(setTrack)
   }, [])
 
@@ -42,7 +41,7 @@ const VideoPreview = (props: VideoPreviewProps) => {
         sx={{
           position: 'relative',
           width: '328px',
-          aspectRatio: 'auto 4/3',
+          minHeight: '180px',
         }}
       >
         {showSkeleton ? (
@@ -51,24 +50,6 @@ const VideoPreview = (props: VideoPreviewProps) => {
           <></>
         )}
       </Box>
-      <TextField
-        select
-        fullWidth
-        label="视频设备"
-        value={defaultCamera ?? 'controlled'}
-        onChange={(evt) => {
-          dispatch(setDefaultCamera(evt.target.value))
-        }}
-      >
-        {cameras.map((camInfo) => {
-          return (
-            <MenuItem key={camInfo.groupId} value={camInfo.groupId}>
-              {camInfo.label}
-            </MenuItem>
-          )
-        })}
-      </TextField>
-      <Typography variant="body2"></Typography>
     </Box>
   )
 }

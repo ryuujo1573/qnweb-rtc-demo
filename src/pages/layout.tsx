@@ -15,6 +15,7 @@ import {
   IconButton,
   InputAdornment,
   Link,
+  MenuItem,
   paperClasses,
   SwipeableDrawer,
   TextField,
@@ -28,8 +29,15 @@ import { MutableRefObject, useRef, useState } from 'react'
 import { Outlet, useOutletContext } from 'react-router'
 
 import { VideoPreview } from '../components'
+import { allPresets, allPresetsText } from '../consts'
 import { updateUserId } from '../features/identitySlice'
-import { setTheme, toggleMirror } from '../features/settingSlice'
+import {
+  isValidPreset,
+  setDefaultCamera,
+  setTheme,
+  toggleMirror,
+  updateCameraPreset,
+} from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkUserId, getPassedTimeDesc } from '../utils'
 
@@ -51,7 +59,8 @@ export function useTopRightBox() {
 export default function Layout() {
   const theme = useTheme()
   const dispatch = useAppDispatch()
-  const { themeCode, mirror } = useAppSelector((s) => s.settings)
+  const { themeCode, mirror, cameras, defaultCamera, cameraPreset } =
+    useAppSelector((s) => s.settings)
   const { userId } = useAppSelector((s) => s.identity)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -74,6 +83,7 @@ export default function Layout() {
       return
     }
     dispatch(updateUserId(userIdText))
+    setUserIdText('')
   }
   return (
     <>
@@ -189,10 +199,7 @@ export default function Layout() {
               }}
             />
           </SectionFragment>
-          <SectionFragment
-            title="视频"
-            // TODO: 支持切换清晰度、默认开启音视频
-          >
+          <SectionFragment title="视频">
             <VideoPreview />
             <ToggleButton
               value={true}
@@ -203,18 +210,54 @@ export default function Layout() {
             >
               <FlipRounded />
             </ToggleButton>
+
+            <TextField
+              select
+              fullWidth
+              label="视频设备"
+              variant="standard"
+              value={defaultCamera ?? 'default'}
+              onChange={(evt) => {
+                dispatch(setDefaultCamera(evt.target.value))
+              }}
+            >
+              <MenuItem value="default">默认视频设备</MenuItem>
+              {cameras.map((camInfo) => {
+                return (
+                  <MenuItem key={camInfo.groupId} value={camInfo.groupId}>
+                    {camInfo.label}
+                  </MenuItem>
+                )
+              })}
+            </TextField>
+            <TextField
+              select
+              fullWidth
+              label="视频规格预设"
+              variant="standard"
+              value={cameraPreset}
+              onChange={(evt) => {
+                if (isValidPreset(evt.target.value)) {
+                  dispatch(updateCameraPreset(evt.target.value))
+                }
+              }}
+            >
+              {allPresets.map((key) => (
+                <MenuItem key={key} value={key}>
+                  {allPresetsText[key]}
+                </MenuItem>
+              ))}
+            </TextField>
           </SectionFragment>
-          <SectionFragment title="测试"></SectionFragment>
           <SectionFragment title="关于">
             <Typography variant="body2" textAlign="left">
               DEMO VERSION:{' '}
-              <b color={theme.palette.secondary.main}>
+              <b>
                 {import.meta.env.VITE_APP_VERSION}:{' '}
                 {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}
               </b>
               <br />
-              SDK VERSION:{' '}
-              <b color={theme.palette.secondary.main}>{QNRTC.VERSION}</b>
+              SDK VERSION: <b>{QNRTC.VERSION}</b>
               <br />
               BUILD TIME: <b>{buildDate.toLocaleString()}</b> (
               {getPassedTimeDesc(buildDate)})
