@@ -244,6 +244,7 @@ export default function RoomPage() {
           flex: 1,
           position: 'relative',
           display: 'flex',
+          height: 'calc(100% - 180px)',
         }}
       >
         <Box
