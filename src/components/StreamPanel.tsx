@@ -261,14 +261,14 @@ const StreamingConfigPanel = forwardRef<HTMLDivElement, StreamingConfigProps>(
       >
         确认
       </Button>
-      <Button
+      {/* <Button
         variant="outlined"
         disabled
         startIcon={<RestartAltRounded />}
         // WIP
       >
         重置
-      </Button>
+      </Button> */}
     </Paper>
   )
 )
@@ -300,7 +300,7 @@ function DirectConfigForm() {
   return (
     <>
       <List dense disablePadding>
-        {videoTracks.length ? <ListSubheader children="视频轨道" /> : <></>}
+        {videoTracks.length ? <ListSubheader children="视频轨" /> : <></>}
         {videoTracks.map((vt) => {
           const tid = vt.trackID!
           const { id, label, muted } = vt.getMediaStreamTrack() ?? {}
@@ -317,7 +317,7 @@ function DirectConfigForm() {
             </ListItemButton>
           )
         })}
-        {audioTracks.length ? <ListSubheader children="音频轨道" /> : <></>}
+        {audioTracks.length ? <ListSubheader children="音轨" /> : <></>}
         {audioTracks.map((at) => {
           const tid = at.trackID!
           const { id, label, muted } = at.getMediaStreamTrack() ?? {}
@@ -847,7 +847,7 @@ function ComposedConfigForm() {
                       >
                         <Tooltip
                           placement="top"
-                          title={isVideo ? '视频轨道' : '音频轨道'}
+                          title={isVideo ? '视频轨' : '音轨'}
                         >
                           {isVideo ? (
                             <VideocamRounded />

@@ -133,7 +133,6 @@ export default function UserBox({ user }: UserBoxProps) {
         border: 'InactiveBorder 2px solid',
         marginInline: 0.2,
         height: '180px',
-        width: '240px',
         '& audio': {
           display: 'none',
         },
@@ -195,6 +194,7 @@ export default function UserBox({ user }: UserBoxProps) {
             key={user.userID + 'v' + i}
             videoTrack={track}
             sx={{
+              width: '240px',
               height: '180px',
             }}
           ></VideoBox>

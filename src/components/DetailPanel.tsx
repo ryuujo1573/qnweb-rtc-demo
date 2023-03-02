@@ -103,7 +103,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
 
     function template(t: QNLocalAudioTrack | QNLocalVideoTrack): string {
       // get tag string for stats display
-      const trackName = t.tag ?? `未知${t.isAudio() ? '音频' : '视频'}轨道`
+      const trackName = t.tag ?? `未知${t.isAudio() ? '音频' : '视频'}轨`
       // const extra = Object.is(t, pinnedTrack) ? ' (已固定)' : ''
       return trackName
     }

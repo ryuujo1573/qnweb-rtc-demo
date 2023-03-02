@@ -19,7 +19,7 @@ interface Settings {
   facingMode: FacingMode
   mirror: boolean
   liveStreamBaseUrl: string
-  sei: string | null
+  sei?: string
   playbacks: PlainDeviceInfo[]
   microphones: PlainDeviceInfo[]
   cameras: PlainDeviceInfo[]
@@ -84,6 +84,16 @@ export const settingSlice = createSlice({
         state.defaultCamera = payload
       }
     },
+    setDefaultMicrophone(state, { payload }: PayloadAction<string>) {
+      if (state.microphones.find((p) => p.groupId == payload)) {
+        state.defaultMicrophone = payload
+      }
+    },
+    setDefaultPlayback(state, { payload }: PayloadAction<string>) {
+      if (state.playbacks.find((p) => p.groupId == payload)) {
+        state.defaultPlayback = payload
+      }
+    },
     updateCameraPreset(state, { payload }: PayloadAction<Preset>) {
       state.cameraPreset = payload
     },
@@ -121,6 +131,8 @@ export const {
   toggleMirror,
   setDefaultCamera,
   updateCameraPreset,
+  setDefaultMicrophone,
+  setDefaultPlayback,
 } = settingSlice.actions
 export const selectTheme = (state: RootState) => state.settings.themeCode
 export default settingSlice.reducer

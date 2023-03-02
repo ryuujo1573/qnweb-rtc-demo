@@ -1,26 +1,15 @@
 import {
   CallEndRounded,
   CloseRounded,
-  LayersRounded,
   MicOffRounded,
   MicRounded,
   RestartAltRounded,
   ScreenShareRounded,
-  StreamRounded,
   TuneRounded,
   VideocamOffRounded,
   VideocamRounded,
 } from '@mui/icons-material'
-import {
-  Box,
-  Button,
-  IconButton,
-  useTheme,
-  Tooltip,
-  ToggleButtonGroup,
-  ToggleButton,
-  Fade,
-} from '@mui/material'
+import { Box, Button, IconButton, useTheme, Tooltip } from '@mui/material'
 import QNRTC, {
   QNCameraVideoTrack,
   QNConnectionDisconnectedInfo,
@@ -28,7 +17,6 @@ import QNRTC, {
   QNCustomAudioTrack,
   QNLocalVideoTrack,
   QNMicrophoneAudioTrack,
-  QNRemoteAudioTrack,
   QNRemoteTrack,
   QNRemoteVideoTrack,
   QNScreenVideoTrack,
@@ -47,7 +35,11 @@ import { client } from '../api'
 import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
 import { StreamingControl } from '../components/StreamPanel'
 import { error, message } from '../features/messageSlice'
-import { checkDevices } from '../features/settingSlice'
+import {
+  setDefaultCamera,
+  setDefaultMicrophone,
+  setDefaultPlayback,
+} from '../features/settingSlice'
 import { updateDirectConfig } from '../features/streamSlice'
 import refStore, { RemoteUser } from '../features/tracks'
 import { useAppDispatch, useAppSelector } from '../store'
@@ -85,13 +77,16 @@ export default function RoomPage() {
     navigate('/')
   }
   const {
-    mirror,
-    facingMode,
     appId,
-    liveStreamBaseUrl,
     cameras,
     microphones,
     playbacks,
+    mirror,
+    facingMode,
+    cameraPreset,
+    defaultCamera,
+    defaultMicrophone,
+    defaultPlayback,
   } = useAppSelector((s) => s.settings)
 
   // session states
@@ -118,10 +113,6 @@ export default function RoomPage() {
   const isConnecting =
     state == QState.CONNECTING || state == QState.RECONNECTING
 
-  const [playbackId, setPlaybackId] = useState<string>('default')
-  const [cameraId, setCameraId] = useState<string>('default')
-  const [microphoneId, setMicrophoneId] = useState<string>('default')
-
   const [camTrack, setCamTrack] = useState<QNCameraVideoTrack | null>(null)
   const [micTrack, setMicTrack] = useState<QNMicrophoneAudioTrack | null>(null)
   const [[screenVideo, screenAudio], setScreenShare] = useState<
@@ -144,7 +135,9 @@ export default function RoomPage() {
       // create `camTrack` only if set unmuted to true
       if (!camMuted && camTrack == null) {
         QNRTC.createCameraVideoTrack({
-          cameraId,
+          cameraId: defaultCamera,
+          encoderConfig: cameraPreset,
+          facingMode,
         }).then(async (track) => {
           await client.publish(track)
           setCamTrack(track)
@@ -159,7 +152,8 @@ export default function RoomPage() {
       // the same logic as camera
       if (!micMuted && micTrack == null) {
         QNRTC.createMicrophoneAudioTrack({
-          microphoneId,
+          microphoneId: defaultMicrophone,
+          // TODO: encoding
         }).then(async (track) => {
           await client.publish(track)
           setMicTrack(track)
@@ -229,8 +223,6 @@ export default function RoomPage() {
       <StreamingControl
         {...{
           state,
-          // videoTracks: [camTrack, screenVideo].filter(notNull),
-          // audioTracks: [micTrack, screenAudio].filter(notNull),
         }}
       />
       <Box
@@ -274,9 +266,7 @@ export default function RoomPage() {
               display: pinnedTrack ? 'static' : 'none',
             }}
             onClick={() => {
-              // startTransition(() => {
               setPinnedTrack(undefined)
-              // })
             }}
           >
             <CloseRounded fontSize="medium" />
@@ -318,10 +308,10 @@ export default function RoomPage() {
                 <TooltipList
                   list={playbacks}
                   initialIndex={playbacks.findIndex(
-                    (pb) => pb.deviceId == playbackId
+                    (pb) => pb.deviceId == defaultPlayback
                   )}
                   onSelect={async ({ deviceId }) => {
-                    setPlaybackId(deviceId)
+                    dispatch(setDefaultPlayback(deviceId))
                   }}
                 />
               ) : (
@@ -344,10 +334,10 @@ export default function RoomPage() {
                 <TooltipList
                   list={microphones}
                   initialIndex={microphones.findIndex(
-                    (mic) => mic.deviceId == microphoneId
+                    (mic) => mic.deviceId == defaultMicrophone
                   )}
                   onSelect={({ deviceId }) => {
-                    setMicrophoneId(deviceId)
+                    dispatch(setDefaultMicrophone(deviceId))
                   }}
                 />
               ) : (
@@ -386,10 +376,10 @@ export default function RoomPage() {
                 <TooltipList
                   list={cameras}
                   initialIndex={cameras.findIndex(
-                    (cam) => cam.deviceId == cameraId
+                    (cam) => cam.deviceId == defaultCamera
                   )}
                   onSelect={({ deviceId }) => {
-                    setCameraId(deviceId)
+                    dispatch(setDefaultCamera(deviceId))
                   }}
                 />
               ) : (
