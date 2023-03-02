@@ -1,37 +1,32 @@
-import { FlipRounded, PlayArrowRounded } from '@mui/icons-material'
-import {
-  Box,
-  IconButton,
-  ToggleButton,
-  Typography,
-  useTheme,
-} from '@mui/material'
-import { grey } from '@mui/material/colors'
+import { Box, MenuItem, Skeleton, TextField, Typography } from '@mui/material'
 import QNRTC, { QNLocalVideoTrack } from 'qnweb-rtc'
 import { useEffect, useRef, useState } from 'react'
+import { setDefaultCamera } from '../features/settingSlice'
+import { useAppDispatch, useAppSelector } from '../store'
 
-export interface VideoPreviewProps {
-  autoplay?: boolean
-}
+export interface VideoPreviewProps {}
 
-const VideoPreview = ({ autoplay }: VideoPreviewProps) => {
-  const [mirror, setMirror] = useState(true)
-
+const VideoPreview = (props: VideoPreviewProps) => {
+  const { mirror, facingMode, cameras, defaultCamera } = useAppSelector(
+    (s) => s.settings
+  )
+  const dispatch = useAppDispatch()
   const boxRef = useRef<HTMLDivElement>()
   const [track, setTrack] = useState<QNLocalVideoTrack>()
-
-  const shouldPlay = autoplay || track != undefined
-  const theme = useTheme()
+  const [showSkeleton, setShown] = useState(true)
 
   useEffect(() => {
-    console.log('## recreate')
-    QNRTC.createCameraVideoTrack().then(setTrack)
+    QNRTC.createCameraVideoTrack({
+      facingMode,
+      cameraId: defaultCamera,
+    }).then(setTrack)
   }, [])
 
   useEffect(() => {
     if (boxRef.current) {
       if (track) {
         track.play(boxRef.current, { mirror: false })
+        setShown(false)
         return () => {
           track.destroy()
         }
@@ -40,43 +35,41 @@ const VideoPreview = ({ autoplay }: VideoPreviewProps) => {
   }, [boxRef.current, track])
 
   return (
-    <>
+    <Box>
       <Box
         {...(mirror ? { className: 'mirror' } : undefined)}
         ref={boxRef}
         sx={{
           position: 'relative',
-          width: '280px',
-          height: '180px',
-          display: 'flex',
-          background: grey[400],
+          width: '328px',
+          aspectRatio: 'auto 4/3',
         }}
       >
-        <Typography
-          variant="body2"
-          sx={{
-            position: 'absolute',
-            bottom: 'calc(-1rem - 5px)',
-          }}
-        >
-          {track?.getMediaStreamTrack()?.label}
-        </Typography>
-        {shouldPlay ? undefined : (
-          <IconButton onClick={() => {}} sx={{ margin: 'auto' }}>
-            <PlayArrowRounded />
-          </IconButton>
+        {showSkeleton ? (
+          <Skeleton variant="rectangular" width="100%" height="100%" />
+        ) : (
+          <></>
         )}
       </Box>
-      <ToggleButton
-        value={true}
-        selected={mirror}
-        onChange={() => {
-          setMirror(!mirror)
+      <TextField
+        select
+        fullWidth
+        label="视频设备"
+        value={defaultCamera ?? 'controlled'}
+        onChange={(evt) => {
+          dispatch(setDefaultCamera(evt.target.value))
         }}
       >
-        <FlipRounded />
-      </ToggleButton>
-    </>
+        {cameras.map((camInfo) => {
+          return (
+            <MenuItem key={camInfo.groupId} value={camInfo.groupId}>
+              {camInfo.label}
+            </MenuItem>
+          )
+        })}
+      </TextField>
+      <Typography variant="body2"></Typography>
+    </Box>
   )
 }
 

@@ -1,9 +1,11 @@
 import {
+  AudiotrackRounded,
   CheckRounded,
   ExpandMoreRounded,
   LayersRounded,
   RestartAltRounded,
   StreamRounded,
+  VideocamRounded,
 } from '@mui/icons-material'
 import {
   Accordion as MuiAccordion,
@@ -27,23 +29,21 @@ import {
   MenuItem,
   Paper,
   styled,
+  svgIconClasses,
   Switch,
   Tab,
-  tabClasses,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
+  Typography,
   useTheme,
 } from '@mui/material'
 import { TabContext, TabList, TabPanel } from '@mui/lab'
 import {
   QNConnectionState as QState,
   QNLiveStreamingState as QLiveState,
-  QNLocalAudioTrack,
-  QNLocalVideoTrack,
-  QNRemoteVideoTrack,
   QNRenderMode,
-  QNTranscodingLiveStreamingConfig,
   QNTranscodingLiveStreamingTrack,
 } from 'qnweb-rtc'
 import {
@@ -93,7 +93,6 @@ export function StreamingControl({ state }: StreamingControlProps) {
   const pending = liveState == 'connecting'
 
   const handleModeChange = async (evt: any, mode: string) => {
-    console.log('# triggered', evt, mode)
     function isValidMode(mode: string): mode is 'direct' | 'composed' {
       return ['direct', 'composed'].includes(mode)
     }
@@ -123,10 +122,6 @@ export function StreamingControl({ state }: StreamingControlProps) {
     }
     client.on('direct-livestreaming-state-changed', useHandler('direct'))
     client.on('transcoding-livestreaming-state-changed', useHandler('composed'))
-
-    return () => {
-      // client
-    }
   }, [])
 
   const [tabValue, setTabValue] = useState(liveMode.slice())
@@ -778,19 +773,27 @@ function ComposedConfigForm() {
           </Grid>
         </AccordionDetails>
       </Accordion>
-      <Accordion expanded={nstExpanded[1]} onChange={handleExpand(1)}>
+      <Accordion
+        expanded={nstExpanded[1]}
+        onChange={handleExpand(1)}
+        disabled={!allTracks.length}
+      >
         <AccordionSummary aria-controls="settings-2">
           合成设置 {composedTracks.length ? `(${composedTracks.length})` : ''}
         </AccordionSummary>
         <AccordionDetails>
-          {videoTracks.map((track, index) => {
+          {allTracks.map((track, index) => {
             const trackID = track.trackID!
+            const userID = track.userID!
             const trackConfig = composedTracks.find(
               (config) => config.trackID == trackID
             )
             const selected = !!trackConfig
 
-            const { id, label, muted } = track.getMediaStreamTrack() ?? {}
+            const { id, label, muted, kind } = track.getMediaStreamTrack() ?? {}
+            const displayId = id?.slice(-12) ?? trackID
+            const secondaryText = `[${userID}] #${displayId}`
+            const primaryText = label ?? '未知设备'
 
             function handleUpdate<
               T extends keyof QNTranscodingLiveStreamingTrack
@@ -802,11 +805,18 @@ function ComposedConfigForm() {
               trackConfig![key] = value
             }
 
+            const isVideo = track.isVideo()
             return (
-              <>
+              <Fragment key={id}>
                 <ListItemButton
                   dense
+                  disableGutters
                   selected={selected}
+                  sx={{
+                    [`& .${svgIconClasses.root}`]: {
+                      m: 'auto',
+                    },
+                  }}
                   onClick={() => {
                     if (selected) {
                       // remove current from list
@@ -823,94 +833,116 @@ function ComposedConfigForm() {
                     }
                   }}
                 >
-                  <ListItemIcon>
-                    {selected ? <CheckRounded /> : <></>}
-                  </ListItemIcon>
+                  <ListItemIcon>{selected && <CheckRounded />}</ListItemIcon>
                   <ListItemText
-                    primary={label ?? '未知视频轨道'}
-                    secondary={id ?? `[${trackID}]`}
+                    primary={
+                      <Typography
+                        sx={{
+                          [`&>.${svgIconClasses.root}`]: {
+                            fontSize: 'inherit',
+                            verticalAlign: 'middle',
+                            mr: '.5ch',
+                          },
+                        }}
+                      >
+                        <Tooltip
+                          placement="top"
+                          title={isVideo ? '视频轨道' : '音频轨道'}
+                        >
+                          {isVideo ? (
+                            <VideocamRounded />
+                          ) : (
+                            <AudiotrackRounded />
+                          )}
+                        </Tooltip>
+                        {primaryText}
+                      </Typography>
+                    }
+                    secondary={secondaryText}
                   />
                 </ListItemButton>
-                <Grow in={selected}>
-                  <Box
-                    p={1}
-                    rowGap={1}
-                    display={selected ? 'flex' : 'none'}
-                    flexDirection="column"
-                  >
-                    <TextField
-                      id="outlined-basic"
-                      label="x轴坐标"
-                      fullWidth
-                      value={trackConfig?.x}
-                      onChange={(event) =>
-                        handleUpdate('x', index, ~~event.target.value)
-                      }
-                      variant="outlined"
-                    />
-                    <TextField
-                      id="outlined-basic"
-                      label="y轴坐标"
-                      fullWidth
-                      value={trackConfig?.y}
-                      onChange={(event) =>
-                        handleUpdate('y', index, ~~event.target.value)
-                      }
-                      variant="outlined"
-                    />
-                    <TextField
-                      id="outlined-basic"
-                      label="层级"
-                      fullWidth
-                      value={trackConfig?.zOrder}
-                      onChange={(event) =>
-                        handleUpdate('zOrder', index, ~~event.target.value)
-                      }
-                      variant="outlined"
-                    />
-                    <TextField
-                      id="outlined-basic"
-                      label="宽"
-                      fullWidth
-                      value={trackConfig?.width}
-                      onChange={(event) =>
-                        handleUpdate('width', index, ~~event.target.value)
-                      }
-                      variant="outlined"
-                    />
-                    <TextField
-                      id="outlined-basic"
-                      label="高"
-                      fullWidth
-                      value={trackConfig?.height}
-                      onChange={(event) =>
-                        handleUpdate('height', index, ~~event.target.value)
-                      }
-                      variant="outlined"
-                    />
-                    <TextField
-                      select
-                      label="渲染模式"
-                      variant="outlined"
-                      value={trackConfig?.renderMode}
-                      onChange={(event) =>
-                        handleUpdate(
-                          'renderMode',
-                          index,
-                          (event.target.value as QNRenderMode) ||
-                            QNRenderMode.ASPECT_FILL
-                        )
-                      }
+                {isVideo && (
+                  <Grow in={selected}>
+                    <Box
+                      p={1}
+                      rowGap={1}
+                      display={selected ? 'flex' : 'none'}
+                      flexDirection="column"
                     >
-                      {stretchModeList.map(([option, helperText]) => (
-                        <MenuItem key={option} value={option}>
-                          {helperText}
-                        </MenuItem>
-                      ))}
-                    </TextField>
-                  </Box>
-                </Grow>
-              </>
+                      <TextField
+                        id="outlined-basic"
+                        label="x轴坐标"
+                        fullWidth
+                        value={trackConfig?.x}
+                        onChange={(event) =>
+                          handleUpdate('x', index, ~~event.target.value)
+                        }
+                        variant="outlined"
+                      />
+                      <TextField
+                        id="outlined-basic"
+                        label="y轴坐标"
+                        fullWidth
+                        value={trackConfig?.y}
+                        onChange={(event) =>
+                          handleUpdate('y', index, ~~event.target.value)
+                        }
+                        variant="outlined"
+                      />
+                      <TextField
+                        id="outlined-basic"
+                        label="层级"
+                        fullWidth
+                        value={trackConfig?.zOrder}
+                        onChange={(event) =>
+                          handleUpdate('zOrder', index, ~~event.target.value)
+                        }
+                        variant="outlined"
+                      />
+                      <TextField
+                        id="outlined-basic"
+                        label="宽"
+                        fullWidth
+                        value={trackConfig?.width}
+                        onChange={(event) =>
+                          handleUpdate('width', index, ~~event.target.value)
+                        }
+                        variant="outlined"
+                      />
+                      <TextField
+                        id="outlined-basic"
+                        label="高"
+                        fullWidth
+                        value={trackConfig?.height}
+                        onChange={(event) =>
+                          handleUpdate('height', index, ~~event.target.value)
+                        }
+                        variant="outlined"
+                      />
+                      <TextField
+                        select
+                        label="渲染模式"
+                        variant="outlined"
+                        value={trackConfig?.renderMode}
+                        onChange={(event) =>
+                          handleUpdate(
+                            'renderMode',
+                            index,
+                            (event.target.value as QNRenderMode) ||
+                              QNRenderMode.ASPECT_FILL
+                          )
+                        }
+                      >
+                        {stretchModeList.map(([option, helperText]) => (
+                          <MenuItem key={option} value={option}>
+                            {helperText}
+                          </MenuItem>
+                        ))}
+                      </TextField>
+                    </Box>
+                  </Grow>
+                )}
+              </Fragment>
             )
           })}
         </AccordionDetails>

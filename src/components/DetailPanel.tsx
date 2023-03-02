@@ -3,9 +3,16 @@ import {
   DragHandleRounded,
   RefreshRounded,
 } from '@mui/icons-material'
-import { Divider, IconButton, Typography } from '@mui/material'
-import { Box, useTheme } from '@mui/system'
 import {
+  Box,
+  Divider,
+  IconButton,
+  Tooltip,
+  Typography,
+  useTheme,
+} from '@mui/material'
+import {
+  QNConnectionState,
   QNConnectionState as QState,
   QNLocalAudioTrack,
   QNLocalAudioTrackStats,
@@ -13,14 +20,30 @@ import {
   QNLocalVideoTrackStats,
   QNTrack,
 } from 'qnweb-rtc'
-import { Fragment, useContext, useEffect, useMemo, useState } from 'react'
+import {
+  Fragment,
+  // useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
 import { client } from '../api'
-import { StageContext } from '../pages/room'
+// import { StageContext } from '../pages/room'
 
 export type DetailPanelProps = {
   tracks: (QNTrack | null)[]
+}
+
+const stateText = {
+  [QNConnectionState.CONNECTED]: '已连接',
+  [QNConnectionState.CONNECTING]: '连接中',
+  [QNConnectionState.DISCONNECTED]: '未连接',
+  [QNConnectionState.CONNECTED]: '已连接',
+  [QNConnectionState.RECONNECTED]: '已重连',
+  [QNConnectionState.RECONNECTING]: '重连中',
 }
 
 export default function DetailPanel({ tracks }: DetailPanelProps) {
@@ -98,10 +121,13 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     }
   }, [refreshInterval, tracks, autoRefresh])
 
+  const ref = useRef<HTMLDivElement>(null)
+
   return (
-    <Draggable bounds="body" handle="#handle">
+    <Draggable bounds="body" nodeRef={ref}>
       <Box
         component="aside"
+        ref={ref}
         sx={{
           zIndex: 114514,
           position: 'fixed',
@@ -128,24 +154,19 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
         >
           <b>房间:&nbsp;</b>
           {roomId}
-          <Typography
-            color={theme.palette.secondary.main}
-            pl="1ch"
-            fontWeight={700}
-          >
-            {state}
+          <Typography color={theme.palette.grey[500]} pl="1ch" fontWeight={500}>
+            {stateText[state]}
           </Typography>
-          <IconButton
-            onClick={handleCopyInvitation}
-            sx={{
-              marginLeft: 'auto',
-            }}
-          >
-            <ContentCopyRounded />
-          </IconButton>
-          <IconButton onClick={refresh}>
-            <RefreshRounded />
-          </IconButton>
+          <Tooltip title="复制房间链接">
+            <IconButton
+              onClick={handleCopyInvitation}
+              sx={{
+                marginLeft: 'auto',
+              }}
+            >
+              <ContentCopyRounded />
+            </IconButton>
+          </Tooltip>
         </Typography>
         <Box
           sx={{
