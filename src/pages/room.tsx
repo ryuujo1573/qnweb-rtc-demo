@@ -107,21 +107,9 @@ export default function RoomPage() {
       joinRoom()
     }
 
-    // define handler and set callback
-    const check = () => dispatch(checkDevices())
-    QNRTC.onCameraChanged = check
-    QNRTC.onMicrophoneChanged = check
-    QNRTC.onPlaybackDeviceChanged = check
-
-    check()
-
     return () => {
       client.removeAllListeners()
       client.leave()
-
-      QNRTC.onCameraChanged = undefined
-      QNRTC.onMicrophoneChanged = undefined
-      QNRTC.onPlaybackDeviceChanged = undefined
     }
   }, [])
 
