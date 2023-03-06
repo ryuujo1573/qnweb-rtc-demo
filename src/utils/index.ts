@@ -27,7 +27,10 @@ export function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export function debounce(fn: Function, interval: number) {
+export function debounce<TArgs extends any[]>(
+  fn: (...arg: TArgs) => void,
+  interval: number
+): typeof fn {
   let timeout = -1
   return (...args: any[]) => {
     if (timeout !== -1) {
