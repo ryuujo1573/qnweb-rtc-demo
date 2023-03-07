@@ -65,13 +65,6 @@ export const StageContext = createContext<{
   boxRef: React.MutableRefObject<HTMLDivElement | undefined>
 }>({ setTrack: () => {}, track: undefined, boxRef: { current: undefined } })
 
-type LocationState = {
-  token: string
-}
-function isLocationState(s: any): s is LocationState {
-  return s && typeof s == 'object' && typeof s.token == 'string'
-}
-
 export default function RoomPage() {
   let autoJoin = true
   if (import.meta.env.DEV) {
@@ -83,21 +76,14 @@ export default function RoomPage() {
   const dispatch = useAppDispatch()
 
   const { roomId } = useParams()
-  const { state: routeState } = useLocation()
+  const { state: roomToken } = useLocation()
   const tokenRef = useRef<string>()
-  if (isLocationState(routeState)) {
-    tokenRef.current = routeState.token
+  if (typeof roomToken == 'string') {
+    tokenRef.current = roomToken
   }
-  const { userId: localUserID, auth: localAuth } = useAppSelector(
-    (s) => s.identity
-  )
+  const { userId } = useAppSelector((s) => s.identity)
 
-  if (
-    !roomId ||
-    !checkRoomId(roomId) ||
-    !localUserID ||
-    !checkUserId(localUserID)
-  ) {
+  if (!roomId || !checkRoomId(roomId) || !userId || !checkUserId(userId)) {
     navigate('/')
     return <></>
   }
@@ -107,8 +93,6 @@ export default function RoomPage() {
     microphones,
     playbacks,
     mirror,
-    facingMode,
-    cameraPreset,
     defaultCamera,
     defaultMicrophone,
     defaultPlayback,
@@ -128,7 +112,7 @@ export default function RoomPage() {
     if (tokenRef.current) {
       dispatch(joinRoom(tokenRef.current))
     } else {
-      fetchToken(roomId!, appId, localUserID).then((token) => {
+      fetchToken(roomId!, appId, userId).then((token) => {
         dispatch(joinRoom(token))
       })
     }

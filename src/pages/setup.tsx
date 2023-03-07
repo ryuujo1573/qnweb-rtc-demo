@@ -3,14 +3,15 @@ import { ChangeEvent, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { CustomTextField } from '../components'
-import { updateUserId } from '../features/identitySlice'
+import { updateUserId, updateUserIdTemp } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
+import { setAppIdTemp } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkUserId, checkRoomId, useDebounce } from '../utils'
+import { checkRoomId, checkUserId, decodeToken, useDebounce } from '../utils'
 
 export default function SetupPage() {
   const theme = useTheme()
-  const { auth, userId: nickname } = useAppSelector((s) => s.identity)
+  const { userId } = useAppSelector((s) => s.identity)
   const dispatch = useAppDispatch()
 
   const [connectById, setConnectById] = useState(true)
@@ -21,7 +22,7 @@ export default function SetupPage() {
     (event: ChangeEvent<HTMLInputElement>) => {
       const roomId = event.target.value
 
-      if (roomId.length && !checkRoomId(roomId)) {
+      if (connectById && roomId.length && !checkRoomId(roomId)) {
         console.error(event.target.value)
         // todo: debounce changes and show error tints
       }
@@ -70,18 +71,30 @@ export default function SetupPage() {
       key="roomid"
       onSubmit={(e) => {
         e.preventDefault()
-        const roomId = (
-          e.currentTarget.elements.namedItem('roomid') as HTMLInputElement
-        ).value
-        if (checkRoomId(roomId)) {
-          // dispatch(fetchDeviceInfo())
-          navigate('/room/' + roomId)
+        if (connectById) {
+          const roomId = (
+            e.currentTarget.elements.namedItem('roomid') as HTMLInputElement
+          ).value
+          if (checkRoomId(roomId)) {
+            // dispatch(fetchDeviceInfo())
+            navigate('/room/' + roomId)
+          } else {
+            dispatch(
+              error({
+                message: '房间名限制3~64个字符，并且只能包含字母、数字或下划线',
+              })
+            )
+          }
         } else {
-          dispatch(
-            error({
-              message: '房间名限制3~64个字符，并且只能包含字母、数字或下划线',
-            })
-          )
+          const roomToken = (
+            e.currentTarget.elements.namedItem('roomid') as HTMLInputElement
+          ).value
+          const { appId, userId, roomName } = decodeToken(roomToken)
+          dispatch(setAppIdTemp(appId))
+          dispatch(updateUserIdTemp(userId))
+          navigate(`/room/${roomName}`, {
+            state: roomToken,
+          })
         }
       }}
     >
@@ -121,7 +134,7 @@ export default function SetupPage() {
         }}
       >
         <img src="qiniu.svg" alt="logo" width={300} className="logo" />
-        {auth && nickname ? step2() : step1()}
+        {!userId ? step1() : step2()}
       </Box>
     </>
   )

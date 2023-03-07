@@ -64,6 +64,9 @@ export const settingSlice = createSlice({
       state.appId = appId
       localStorage.setItem('app-id', appId)
     },
+    setAppIdTemp: (state, { payload: appId }: PayloadAction<string>) => {
+      state.appId = appId
+    },
     setLiveStreamBaseUrl: (state, { payload: url }: PayloadAction<string>) => {
       state.liveStreamBaseUrl = url
       localStorage.setItem('livestream-url', url)
@@ -126,6 +129,7 @@ export const settingSlice = createSlice({
 export const {
   setTheme,
   setAppId,
+  setAppIdTemp,
   setLiveStreamBaseUrl,
   updateFacingMode,
   toggleMirror,

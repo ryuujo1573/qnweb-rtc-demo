@@ -1,45 +1,36 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { checkUserId } from '../utils'
 
-type AllAuth = 'anonymous'
-
 export interface IdentityState {
-  auth: AllAuth | null
   userId: string | null
 }
 
 const initialState: IdentityState = {
-  auth: localStorage.getItem('auth') as unknown as IdentityState['auth'],
   userId: localStorage.getItem('userid'),
+}
+
+const updateUserIdReducer = function (
+  state: { userId: string | null },
+  { payload: userId }: PayloadAction<string>
+) {
+  if (checkUserId(userId) == false) {
+    console.warn('UserId format not satisfied.', { payload: userId })
+    return
+  }
+  state.userId = userId
 }
 
 export const identitySlice = createSlice({
   name: 'identity',
   initialState,
   reducers: {
-    updateUserId(state, { payload: userId }: PayloadAction<string>) {
-      if (checkUserId(userId) == false) {
-        console.warn('UserId format not satisfied.', { payload: userId })
-        return
-      }
-
-      state.auth = 'anonymous'
-      state.userId = userId
-      localStorage.setItem('auth', 'anonymous')
-      localStorage.setItem('userid', userId)
+    updateUserId: (state, action) => {
+      updateUserIdReducer(state, action)
+      state.userId && localStorage.setItem('userid', state.userId)
     },
-    logout(state) {
-      switch (state.auth) {
-        case 'anonymous':
-          // haha
-          state.auth = null
-          state.userId = null
-        case undefined:
-          console.log('?')
-      }
-    },
+    updateUserIdTemp: updateUserIdReducer,
   },
 })
 
-export const { updateUserId, logout } = identitySlice.actions
+export const { updateUserId, updateUserIdTemp } = identitySlice.actions
 export default identitySlice.reducer
