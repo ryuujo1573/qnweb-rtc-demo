@@ -3,6 +3,7 @@ import { useDispatch, useSelector, TypedUseSelectorHook } from 'react-redux'
 import settings from './features/settingSlice'
 import identity from './features/identitySlice'
 import message from './features/messageSlice'
+import webrtc from './features/webrtcSlice'
 import stream from './features/streamSlice'
 
 export const store = configureStore({
@@ -10,6 +11,7 @@ export const store = configureStore({
     settings,
     identity,
     message,
+    webrtc,
     stream,
   },
 })

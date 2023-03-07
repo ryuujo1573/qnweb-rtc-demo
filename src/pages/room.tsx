@@ -29,7 +29,7 @@ import React, {
   createContext,
   useMemo,
 } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { client } from '../api'
 
 import { DetailPanel, TooltipList, UserBox, VideoBox } from '../components'
@@ -42,8 +42,20 @@ import {
 } from '../features/settingSlice'
 import { updateDirectConfig } from '../features/streamSlice'
 import refStore, { RemoteUser } from '../features/tracks'
+import {
+  createTrack,
+  joinRoom,
+  leaveRoom,
+  removeTrack,
+} from '../features/webrtcSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkUserId, checkRoomId, notNull } from '../utils'
+import {
+  checkUserId,
+  checkRoomId,
+  notNull,
+  isVideoTrack,
+  fetchToken,
+} from '../utils'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -53,9 +65,16 @@ export const StageContext = createContext<{
   boxRef: React.MutableRefObject<HTMLDivElement | undefined>
 }>({ setTrack: () => {}, track: undefined, boxRef: { current: undefined } })
 
+type LocationState = {
+  token: string
+}
+function isLocationState(s: any): s is LocationState {
+  return s && typeof s == 'object' && typeof s.token == 'string'
+}
+
 export default function RoomPage() {
   let autoJoin = true
-  if (import.meta.hot) {
+  if (import.meta.env.DEV) {
     autoJoin = false
   }
 
@@ -64,6 +83,11 @@ export default function RoomPage() {
   const dispatch = useAppDispatch()
 
   const { roomId } = useParams()
+  const { state: routeState } = useLocation()
+  const tokenRef = useRef<string>()
+  if (isLocationState(routeState)) {
+    tokenRef.current = routeState.token
+  }
   const { userId: localUserID, auth: localAuth } = useAppSelector(
     (s) => s.identity
   )
@@ -75,6 +99,7 @@ export default function RoomPage() {
     !checkUserId(localUserID)
   ) {
     navigate('/')
+    return <></>
   }
   const {
     appId,
@@ -90,21 +115,25 @@ export default function RoomPage() {
   } = useAppSelector((s) => s.settings)
 
   // session states
-  const [state, setState] = useState(QState.DISCONNECTED)
-  const [users, setUsers] = useState<RemoteUser[]>([])
+  const {
+    connectionState: state,
+    users,
+    localTrack,
+  } = useAppSelector((s) => s.webrtc)
+  const { camera, microphone, screenVideo, screenAudio } = localTrack
+  const [camTrack, micTrack, screenVideoTrack, screenAudioTrack] =
+    refStore.matchLocalTracks(camera, microphone, screenVideo, screenAudio)
 
   useEffect(() => {
-    // add event handlers
-    addEventHandlers()
-
-    // auto join
-    if (autoJoin) {
-      joinRoom()
+    if (tokenRef.current) {
+      dispatch(joinRoom(tokenRef.current))
+    } else {
+      fetchToken(roomId!, appId, localUserID).then((token) => {
+        dispatch(joinRoom(token))
+      })
     }
-
     return () => {
-      client.removeAllListeners()
-      client.leave()
+      dispatch(leaveRoom())
     }
   }, [])
 
@@ -113,78 +142,40 @@ export default function RoomPage() {
   const isConnecting =
     state == QState.CONNECTING || state == QState.RECONNECTING
 
-  const [camTrack, setCamTrack] = useState<QNCameraVideoTrack | null>(null)
-  const [micTrack, setMicTrack] = useState<QNMicrophoneAudioTrack | null>(null)
-  const [[screenVideo, screenAudio], setScreenShare] = useState<
-    [QNScreenVideoTrack | null, QNCustomAudioTrack | null]
-  >([null, null])
-
   const [micMuted, setMicMuted] = useState(true)
   const [camMuted, setCamMuted] = useState(true)
-  const screenSharing = screenVideo != null
-
-  ;[camTrack, micTrack, screenVideo, screenAudio]
-    .filter(notNull)
-    .forEach((t) => {
-      refStore.localTracks.set(t.trackID!, t)
-    })
+  const screenSharing = screenVideoTrack != null
 
   // handle track mute & unmute
   useEffect(() => {
     if (isConnected) {
       // create `camTrack` only if set unmuted to true
-      if (!camMuted && camTrack == null) {
-        QNRTC.createCameraVideoTrack({
-          cameraId: defaultCamera,
-          encoderConfig: cameraPreset,
-          facingMode,
-        }).then(async (track) => {
-          await client.publish(track)
-          setCamTrack(track)
-        })
-      } else if (camMuted && camTrack != null) {
-        client.unpublish(camTrack).then(() => {
-          setCamTrack(null)
-          camTrack.destroy()
-        })
+      if (!camMuted && !camTrack) {
+        dispatch(createTrack('camera'))
+      } else if (camMuted && camTrack) {
+        dispatch(removeTrack('camera'))
       }
 
       // the same logic as camera
-      if (!micMuted && micTrack == null) {
-        QNRTC.createMicrophoneAudioTrack({
-          microphoneId: defaultMicrophone,
-          // TODO: encoding
-        }).then(async (track) => {
-          await client.publish(track)
-          setMicTrack(track)
-        })
-      } else if (micMuted && micTrack != null) {
-        client.unpublish(micTrack).then(() => {
-          setMicTrack(null)
-          micTrack.destroy()
-        })
+      if (!micMuted && !micTrack) {
+        dispatch(createTrack('microphone'))
+      } else if (micMuted && micTrack) {
+        dispatch(removeTrack('microphone'))
       }
     } else if (!isConnecting) {
       // clean up if disconnected
-      if (camTrack != null) {
-        camTrack.destroy()
-        setCamTrack(null)
-      }
-      if (micTrack != null) {
-        micTrack.destroy()
-        setMicTrack(null)
-      }
+      dispatch(removeTrack())
     }
   }, [state, camMuted, micMuted])
 
   useEffect(() => {
     dispatch(
       updateDirectConfig({
-        videoTrackId: camTrack?.trackID!,
-        audioTrackId: micTrack?.trackID!,
+        videoTrackId: camera,
+        audioTrackId: microphone,
       })
     )
-  }, [camTrack, micTrack])
+  }, [camera, microphone])
 
   // TODO: throttle
   const onCallButtonClick =
@@ -201,7 +192,9 @@ export default function RoomPage() {
           navigate('/')
         }
       } else {
-        joinRoom()
+        if (tokenRef.current) {
+          dispatch(joinRoom(tokenRef.current))
+        }
       }
     }
 
@@ -219,7 +212,9 @@ export default function RoomPage() {
 
   return (
     <StageContext.Provider value={stageContextValue}>
-      <DetailPanel tracks={[camTrack, micTrack, screenVideo, screenAudio]} />
+      <DetailPanel
+        tracks={[camTrack, micTrack, screenVideoTrack, screenAudioTrack]}
+      />
       <StreamingControl
         {...{
           state,
@@ -282,7 +277,7 @@ export default function RoomPage() {
               width: '240px',
               height: '160px',
             }}
-            videoTrack={camTrack}
+            videoTrack={isVideoTrack(camTrack) ? camTrack : undefined}
             className={mirror ? 'mirror' : undefined}
           />
         ) : undefined}
@@ -420,123 +415,27 @@ export default function RoomPage() {
     _evt: React.MouseEvent<Element, MouseEvent>
   ) {
     if (screenSharing == false) {
-      const result = await QNRTC.createScreenVideoTrack({}, 'auto')
-      await client.publish(result)
-      if (Array.isArray(result)) {
-        const [screenVideo, _screenAudio] = result
-        setScreenShare(result)
-        screenVideo.on('ended', function () {
-          setScreenShare([null, null])
-        })
-      } else {
-        const screenVideo = result
-        setScreenShare([screenVideo, null])
-        screenVideo.on('ended', function () {
-          setScreenShare([null, null])
-        })
-      }
+      dispatch(createTrack('screenVideo'))
     } else {
-      setScreenShare((oldTracks) => {
-        oldTracks.forEach((t) => {
-          if (t) {
-            client.unpublish(t)
-            t.destroy()
-          }
-        })
-        return [null, null]
-      })
+      dispatch(removeTrack('screenVideo'))
+      dispatch(removeTrack('screenAudio'))
     }
   }
 
-  async function joinRoom() {
-    const resp = await fetch(
-      `https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${localUserID}?bundleId=demo-rtc.qnsdk.com`
-    )
-    const token = await resp.text()
-    try {
-      await client.join(token)
-    } catch (e: any) {
-      dispatch(error({ message: JSON.stringify(e.message) }))
-    }
-  }
-
-  function addEventHandlers() {
-    client.addListener(
-      'connection-state-changed',
-      (state: QState, info?: QNConnectionDisconnectedInfo) => {
-        if (info) {
-          dispatch(message({ message: 'disconnected:' + info.errorMessage }))
-        }
-        setState(state)
-      }
-    )
-    client.addListener('user-joined', (uid: string, userData?: string) => {
-      setUsers((users) => [
-        ...users,
-        {
-          userID: uid,
-          userData,
-          state: QState.CONNECTED,
-          trackIds: [],
-        },
-      ])
-    })
-    client.addListener('user-left', (uid: string) => {
-      setUsers((users) => {
-        const user = users.find((u) => u.userID == uid)!
-        for (const trackId of user.trackIds) {
-          refStore.remoteTracks.delete(trackId)
-        }
-        return users.filter((u) => u != user)
-      })
-    })
-    client.addListener(
-      'user-published',
-      async (uid: string, qntracks: QNRemoteTrack[]) => {
-        console.log('user-published', uid, qntracks)
-        const { audioTracks, videoTracks } = await client.subscribe(qntracks)
-        setUsers((users) => {
-          const user = users.find((u) => u.userID == uid)!
-          for (const track of [...audioTracks, ...videoTracks]) {
-            // record track id & save track
-            user.trackIds.push(track.trackID!)
-            refStore.remoteTracks.set(track.trackID!, track)
-          }
-          return users.slice()
-        })
-      }
-    )
-    client.addListener(
-      'user-unpublished',
-      async (uid: string, unpublishingTracks: QNRemoteTrack[]) => {
-        setUsers((users) => {
-          const user = users.find((u) => u.userID == uid)!
-          const removalIds = unpublishingTracks
-            .map((t) => t.trackID!)
-            // double confimation for removing IDs
-            .filter((tid) => user.trackIds.includes(tid))
-
-          for (const trackId of removalIds) {
-            refStore.remoteTracks.delete(trackId)
-          }
-          return users.slice()
-        })
-        // await client.unsubscribe(unpublishingTracks)
-      }
-    )
-    client.addListener('user-reconnecting', (uid: string) => {
-      setUsers((users) => {
-        const user = users.find((u) => u.userID == uid)!
-        user.state = QState.RECONNECTING
-        return users.slice()
-      })
-    })
-    client.addListener('user-reconnected', (uid: string) => {
-      setUsers((users) => {
-        const user = users.find((u) => u.userID == uid)!
-        user.state = QState.RECONNECTED
-        return users.slice()
-      })
-    })
-  }
+  // function addEventHandlers() {
+  //   client.addListener('user-reconnecting', (uid: string) => {
+  //     setUsers((users) => {
+  //       const user = users.find((u) => u.userID == uid)!
+  //       user.state = QState.RECONNECTING
+  //       return users.slice()
+  //     })
+  //   })
+  //   client.addListener('user-reconnected', (uid: string) => {
+  //     setUsers((users) => {
+  //       const user = users.find((u) => u.userID == uid)!
+  //       user.state = QState.RECONNECTED
+  //       return users.slice()
+  //     })
+  //   })
+  // }
 }

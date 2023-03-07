@@ -147,7 +147,7 @@ export default function Layout() {
             </IconButton>
           </Box>
           <Divider variant="fullWidth" />
-          <SectionFragment title="主题模式">
+          {/* <SectionFragment title="主题模式">
             <ToggleButtonGroup
               fullWidth
               color="primary"
@@ -172,7 +172,7 @@ export default function Layout() {
                 &nbsp;Dark
               </ToggleButton>
             </ToggleButtonGroup>
-          </SectionFragment>
+          </SectionFragment> */}
           <SectionFragment title="用户">
             <TextField
               label="修改userID"

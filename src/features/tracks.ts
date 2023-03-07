@@ -16,15 +16,28 @@ export interface RemoteUser {
 const refStore = {
   localTracks: new Map<string, QNLocalTrack>(),
   remoteTracks: new Map<string, QNRemoteTrack>(),
+  *matchLocalTracks(...ids: (string | undefined)[]) {
+    for (const id of ids) {
+      if (id) {
+        yield this.localTracks.get(id)
+      }
+    }
+  },
   queryRemoteTracks(ids: string[]) {
     const result = []
-    for (const id of ids) {
-      const track = this.remoteTracks.get(id)
-      if (track) {
+    for (const [id, track] of this.remoteTracks) {
+      if (ids.includes(id)) {
         result.push(track)
       }
     }
     return result
+  },
+  *matchRemoteTracks(...ids: (string | undefined)[]) {
+    for (const id of ids) {
+      if (id) {
+        yield this.remoteTracks.get(id)
+      }
+    }
   },
   get allTracks() {
     return Array.of<QNLocalTrack | QNRemoteTrack>(

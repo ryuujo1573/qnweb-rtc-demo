@@ -11,6 +11,7 @@ import refStore from './tracks'
 type QStream = {
   liveMode: LiveMode
   streamID: string
+  replacing?: boolean
 }
 
 export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
@@ -64,6 +65,7 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
             stopLive({
               liveMode: lastLiveMode,
               streamID: lastStreamId,
+              replacing: true,
             })
           )
         }
@@ -93,34 +95,31 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
   }
 )
 
-export const stopLive = createAsyncThunk<void, QStream | undefined, ThunkAPI>(
+export const stopLive = createAsyncThunk(
   'stream/stopLive',
-  async function (specified, { getState }) {
-    const { lastLiveMode, lastStreamId } = getState().stream
+  async function (specified: QStream) {
+    // const { lastLiveMode, lastStreamId } = getState().stream
 
-    const liveMode = specified ? specified.liveMode : lastLiveMode
-    const streamId = specified ? specified.streamID : lastStreamId
+    const { liveMode, streamID } = specified
 
-    if (!streamId) {
-      return
-    }
     if (liveMode == 'composed') {
-      await client.stopTranscodingLiveStreaming(streamId)
+      await client.stopTranscodingLiveStreaming(streamID)
     } else {
-      await client.stopDirectLiveStreaming(streamId)
+      await client.stopDirectLiveStreaming(streamID)
     }
+    return specified.replacing
   }
 )
 
 export type LiveMode = 'direct' | 'composed'
-export type LiveState = 'idle' | 'connected' | 'connecting'
+export type LiveState = 'idle' | 'connected' | 'processing'
 
 export type StreamState = {
   liveState: LiveState
   liveMode: LiveMode
   serialNum: number
   lastLiveMode?: LiveMode
-  lastStreamId?: ReturnType<typeof getRandomId>
+  lastStreamId?: string
   directConfig: {
     videoTrackId?: string
     audioTrackId?: string
@@ -176,18 +175,29 @@ export const streamSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(startLive.pending, (state) => {
-        state.liveState = 'connecting'
+        state.liveState = 'processing'
       })
       .addCase(startLive.fulfilled, (state, action) => {
         state.lastStreamId = action.payload.streamID
         state.lastLiveMode = action.payload.liveMode
         state.liveState = 'connected'
       })
+      .addCase(stopLive.pending, (state) => {
+        state.liveState = 'processing'
+      })
+      .addCase(stopLive.fulfilled, (state, { payload: isReplacing }) => {
+        if (isReplacing) {
+          state.liveState = 'connected'
+        } else {
+          state.liveState = 'idle'
+          delete state.lastLiveMode
+          delete state.lastStreamId
+        }
+      })
       .addMatcher(
         (action) => action.type.includes('rejected'),
         (state, { error }) => {
           console.error(error.message, '\n', error.stack ?? 'Unknown Error')
-
           state.liveState = 'idle'
         }
       )

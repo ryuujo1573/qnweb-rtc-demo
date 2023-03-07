@@ -10,7 +10,7 @@ export interface IdentityState {
 
 const initialState: IdentityState = {
   auth: localStorage.getItem('auth') as unknown as IdentityState['auth'],
-  userId: localStorage.getItem('userId'),
+  userId: localStorage.getItem('userid'),
 }
 
 export const identitySlice = createSlice({
@@ -26,7 +26,7 @@ export const identitySlice = createSlice({
       state.auth = 'anonymous'
       state.userId = userId
       localStorage.setItem('auth', 'anonymous')
-      localStorage.setItem('userId', userId)
+      localStorage.setItem('userid', userId)
     },
     logout(state) {
       switch (state.auth) {

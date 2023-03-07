@@ -80,17 +80,17 @@ export const settingSlice = createSlice({
       localStorage.setItem('mirror', mirror ? 'true' : 'false')
     },
     setDefaultCamera(state, { payload }: PayloadAction<string>) {
-      if (state.cameras.find((p) => p.groupId == payload)) {
+      if (state.cameras.find((p) => p.deviceId == payload)) {
         state.defaultCamera = payload
       }
     },
     setDefaultMicrophone(state, { payload }: PayloadAction<string>) {
-      if (state.microphones.find((p) => p.groupId == payload)) {
+      if (state.microphones.find((p) => p.deviceId == payload)) {
         state.defaultMicrophone = payload
       }
     },
     setDefaultPlayback(state, { payload }: PayloadAction<string>) {
-      if (state.playbacks.find((p) => p.groupId == payload)) {
+      if (state.playbacks.find((p) => p.deviceId == payload)) {
         state.defaultPlayback = payload
       }
     },

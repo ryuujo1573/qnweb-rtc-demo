@@ -34,7 +34,7 @@ import { client } from '../api'
 // import { StageContext } from '../pages/room'
 
 export type DetailPanelProps = {
-  tracks: (QNTrack | null)[]
+  tracks: (QNTrack | undefined)[]
 }
 
 const stateText = {

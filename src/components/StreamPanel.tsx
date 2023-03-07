@@ -1,4 +1,5 @@
 import {
+  AddCircleOutlineRounded,
   AudiotrackRounded,
   CheckRounded,
   ExpandMoreRounded,
@@ -7,23 +8,30 @@ import {
   StreamRounded,
   VideocamRounded,
 } from '@mui/icons-material'
+import { TabContext, TabList, TabPanel } from '@mui/lab'
 import {
   Accordion as MuiAccordion,
+  AccordionActions,
   AccordionDetails as MuiAccordionDetails,
   AccordionProps,
   AccordionSummary as MuiAccordionSummary,
   AccordionSummaryProps,
   Box,
   Button,
+  Checkbox,
   CircularProgress,
   Fade,
   FormControlLabel,
   Grid,
   gridClasses,
   Grow,
+  IconButton,
   List,
+  ListItem,
+  ListItemAvatar,
   ListItemButton,
   ListItemIcon,
+  ListItemSecondaryAction,
   ListItemText,
   ListSubheader,
   MenuItem,
@@ -39,23 +47,26 @@ import {
   Typography,
   useTheme,
 } from '@mui/material'
-import { TabContext, TabList, TabPanel } from '@mui/lab'
 import {
   QNConnectionState as QState,
   QNLiveStreamingState as QLiveState,
   QNRenderMode,
+  QNTranscodingLiveStreamingConfig,
   QNTranscodingLiveStreamingTrack,
 } from 'qnweb-rtc'
 import {
   CSSProperties,
+  FormEvent,
   forwardRef,
   Fragment,
+  MutableRefObject,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
+import { useForm, useFieldArray } from 'react-hook-form'
 import { useParams } from 'react-router'
 import { client } from '../api'
 import {
@@ -63,13 +74,14 @@ import {
   LiveMode,
   startLive,
   stopLive,
+  StreamState,
   updateComposedConfig,
   updateDirectConfig,
 } from '../features/streamSlice'
+import refStore from '../features/tracks'
 import { useTopRightBox } from '../pages/layout'
 import { useAppDispatch, useAppSelector } from '../store'
-import { getRtmpUrl, isAudioTrack, isVideoTrack } from '../utils'
-import refStore from '../features/tracks'
+import { debounce, getRtmpUrl, isAudioTrack, isVideoTrack } from '../utils'
 
 export type StreamingControlProps = {
   state: QState
@@ -82,15 +94,16 @@ export function StreamingControl({ state }: StreamingControlProps) {
   if (!roomId) {
     return <></>
   }
-  const serialNum = useRef(0)
-  const getUrl = useCallback(() => getRtmpUrl(roomId, serialNum.current++), [])
+  const getUrl = () => getRtmpUrl(roomId, Date.now())
 
   const isConnected = state == QState.CONNECTED || state == QState.RECONNECTED
-  const { liveState, liveMode } = useAppSelector((s) => s.stream)
+  const { liveState, liveMode, lastLiveMode, lastStreamId } = useAppSelector(
+    (s) => s.stream
+  )
   const dispatch = useAppDispatch()
 
   const on = liveState == 'connected'
-  const pending = liveState == 'connecting'
+  const pending = liveState == 'processing'
 
   const handleModeChange = async (evt: any, mode: string) => {
     function isValidMode(mode: string): mode is 'direct' | 'composed' {
@@ -110,7 +123,12 @@ export function StreamingControl({ state }: StreamingControlProps) {
     if (liveState == 'idle') {
       dispatch(startLive(getUrl()))
     } else if (on) {
-      dispatch(stopLive())
+      dispatch(
+        stopLive({
+          liveMode: lastLiveMode!,
+          streamID: lastStreamId!,
+        })
+      )
     }
   }
 
@@ -158,7 +176,7 @@ export function StreamingControl({ state }: StreamingControlProps) {
           )}
         </ToggleButton>
         <Fade
-          in={true || on}
+          in={on}
           // add "alwayShowDetailed"
         >
           <Box height="50px">
@@ -227,11 +245,11 @@ const StreamingConfigPanel = forwardRef<HTMLDivElement, StreamingConfigProps>(
         left: 0,
         [`& > .MuiTabPanel-root`]: {
           p: 0,
-          my: 1,
+          // my: 1,
           maxWidth: '300px',
-
           maxHeight: '60vh',
-          overflowY: 'scroll',
+          overflow: 'auto',
+          borderRadius: 'inherit',
         },
         [`& > button`]: {
           margin: 2,
@@ -253,22 +271,6 @@ const StreamingConfigPanel = forwardRef<HTMLDivElement, StreamingConfigProps>(
           <ComposedConfigForm />
         </TabPanel>
       </TabContext>
-      <Button
-        variant="contained"
-        startIcon={<CheckRounded />}
-        sx={{ mr: 1 }}
-        onClick={props.onConfirm}
-      >
-        确认
-      </Button>
-      {/* <Button
-        variant="outlined"
-        disabled
-        startIcon={<RestartAltRounded />}
-        // WIP
-      >
-        重置
-      </Button> */}
     </Paper>
   )
 )
@@ -300,6 +302,11 @@ function DirectConfigForm() {
   return (
     <>
       <List dense disablePadding>
+        {videoTracks.length == 0 && audioTracks.length == 0 && (
+          <Typography m={10} lineHeight={10} variant="caption">
+            无可用媒体流
+          </Typography>
+        )}
         {videoTracks.length ? <ListSubheader children="视频轨" /> : <></>}
         {videoTracks.map((vt) => {
           const tid = vt.trackID!
@@ -344,27 +351,48 @@ const stretchModeList = [
   [QNRenderMode.FILL, '拉伸填充'],
   [QNRenderMode.ASPECT_FIT, '等比例缩放'],
 ]
-function ComposedConfigForm() {
-  const { composedConfig: config, liveState } = useAppSelector((s) => s.stream)
 
+const maxBitrate = 204800
+const minBitrate = 256
+
+const ComposedConfigForm = () => {
+  const theme = useTheme()
   const dispatch = useAppDispatch()
+  const { composedConfig } = useAppSelector((s) => s.stream)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    control,
+  } = useForm({
+    reValidateMode: 'onBlur',
+    values: composedConfig,
+  })
+  const {
+    fields: transcodingTracks,
+    append: appendTrack,
+    update: updateTrack,
+    remove: removeTrack,
+  } = useFieldArray({
+    control,
+    name: 'transcodingTracks',
+  })
+
+  const {
+    fields: watermarks,
+    append: appendWatermark,
+    update: updateWatermark,
+    remove: removeWatermark,
+  } = useFieldArray({
+    control,
+    name: 'watermarks',
+  })
+
   const { allTracks } = refStore
   const videoTracks = allTracks.filter(isVideoTrack)
   const audioTracks = allTracks.filter(isAudioTrack)
 
-  const setConfig = (newConfig: typeof config) => {
-    dispatch(updateComposedConfig(newConfig))
-  }
-  const mergeConfig = (newConfig: Partial<typeof config>) => {
-    dispatch(
-      updateComposedConfig({
-        ...config,
-        ...newConfig,
-      })
-    )
-  }
-
-  const theme = useTheme()
+  const { composedConfig: config } = useAppSelector((s) => s.stream)
   const Accordion = styled((props: AccordionProps) => (
     <MuiAccordion disableGutters elevation={0} square {...props} />
   ))(({ theme }) => ({
@@ -405,13 +433,7 @@ function ComposedConfigForm() {
       theme.palette.mode === 'dark' ? 'hsl(0,0%,20%)' : 'hsl(0,0%,85%)',
   }))
 
-  const [composedTracks, setComposedTracks] = useState<
-    QNTranscodingLiveStreamingTrack[]
-  >([])
-  const [nstExpanded, setExpanded] = useState([
-    liveState == 'idle',
-    liveState == 'connected',
-  ])
+  const [nstExpanded, setExpanded] = useState([false, false])
   const handleExpand = (i: number) => (_evt: unknown, expanded: boolean) => {
     setExpanded((ls) => {
       ls[i] = expanded
@@ -420,157 +442,105 @@ function ComposedConfigForm() {
   }
 
   return (
-    <>
-      <Accordion expanded={nstExpanded[0]} onChange={handleExpand(0)}>
-        <AccordionSummary aria-controls="settings-1">推流设置</AccordionSummary>
-        <AccordionDetails>
-          <Grid
-            container
-            alignItems="center"
-            // spacing={1}
-            sx={{
-              px: 2,
-              py: 2,
-              gap: 2,
-              width: 'fit-content',
-              [`&>.${gridClasses.root}`]: {
-                width: '100%',
-              },
-            }}
-          >
-            <TextField
-              label="最大码率 (Kbps)"
-              fullWidth
-              value={config.maxBitrate}
-              inputProps={{
-                inputMode: 'numeric',
-                pattern: '[0-9]*',
+    <Box
+      component="form"
+      display="flex"
+      flexDirection="column"
+      onSubmit={handleSubmit((data) => {
+        dispatch(updateComposedConfig(data))
+      })}
+    >
+      <Box
+        sx={{
+          overflowY: 'scroll',
+          flex: 1,
+        }}
+      >
+        <Accordion expanded={nstExpanded[0]} onChange={handleExpand(0)}>
+          <AccordionSummary aria-controls="settings-1">
+            推流设置
+          </AccordionSummary>
+          <AccordionDetails>
+            <Grid
+              container
+              alignItems="center"
+              // spacing={1}
+              sx={{
+                px: 2,
+                py: 2,
+                gap: 2,
+                width: 'fit-content',
+                [`&>.${gridClasses.root}`]: {
+                  width: '100%',
+                },
               }}
-              onChange={(event) => {
-                const input = ~~event.target.value
-                if (input)
-                  setConfig({
-                    ...config,
-                    maxBitrate: input,
-                  })
-              }}
-              variant="outlined"
-            />
-            <Grid>
+            >
               <TextField
-                label="最低码率"
+                label="最大码率 (Kbps)"
+                type="number"
+                {...register('maxBitrate', { max: maxBitrate })}
                 fullWidth
-                value={config.minBitrate}
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                }}
-                onChange={(event) => {
-                  const input = ~~event.target.value
-                  if (input)
-                    setConfig({
-                      ...config,
-                      minBitrate: input,
-                    })
-                }}
+                defaultValue={config.maxBitrate?.toString()}
+                variant="outlined"
+                error={!!errors.maxBitrate}
+              />
+              <TextField
+                label="最低码率 (Kbps)"
+                type="number"
+                {...register('minBitrate', { max: minBitrate })}
+                fullWidth
+                defaultValue={config.minBitrate?.toString()}
+                error={!!errors.minBitrate}
                 variant="outlined"
               />
-            </Grid>
-            <Grid>
               <TextField
-                label="码率"
+                label="码率 (Kbps)"
+                type="number"
+                {...register('bitrate', { min: minBitrate, max: maxBitrate })}
                 fullWidth
-                value={config.bitrate}
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                }}
-                onChange={(event) => {
-                  const input = ~~event.target.value
-                  if (input)
-                    setConfig({
-                      ...config,
-                      bitrate: input,
-                    })
-                }}
+                defaultValue={config.bitrate?.toString()}
+                error={!!errors.bitrate}
                 variant="outlined"
               />
-            </Grid>
-            <Grid>
               <TextField
-                label="帧率"
+                label="帧率 / FPS"
+                type="number"
+                {...register('videoFrameRate', {
+                  min: 1,
+                  max: 60,
+                  required: true,
+                })}
                 fullWidth
-                value={config.videoFrameRate}
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                }}
-                onChange={(event) => {
-                  const input = ~~event.target.value
-                  if (input)
-                    setConfig({
-                      ...config,
-                      videoFrameRate: input,
-                    })
-                }}
+                defaultValue={config.videoFrameRate?.toString() ?? '30'}
+                error={!!errors.videoFrameRate}
                 variant="outlined"
               />
-            </Grid>
-            <Grid>
               <TextField
                 label="宽度"
+                type="number"
+                {...register('width', { min: 100, max: 4096, required: true })}
                 fullWidth
-                value={config.width}
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                }}
-                onChange={(event) => {
-                  const input = ~~event.target.value
-                  if (input)
-                    setConfig({
-                      ...config,
-                      width: input,
-                    })
-                }}
+                defaultValue={config.width?.toString() ?? '1280'}
+                error={!!errors.width}
                 variant="outlined"
               />
-            </Grid>
-            <Grid>
               <TextField
                 label="高度"
+                type="number"
+                {...register('height', { min: 100, max: 4096, required: true })}
                 fullWidth
-                value={config.height}
-                inputProps={{
-                  inputMode: 'numeric',
-                  pattern: '[0-9]*',
-                }}
-                onChange={(event) => {
-                  const input = ~~event.target.value
-                  if (input)
-                    setConfig({
-                      ...config,
-                      height: input,
-                    })
-                }}
+                defaultValue={config.height?.toString() ?? '720'}
+                error={!!errors.height}
                 variant="outlined"
               />
-            </Grid>
-            <Grid>
               <TextField
+                label="渲染模式"
+                {...register('renderMode', { required: true })}
                 select
                 fullWidth
-                label="渲染模式"
+                defaultValue={config.renderMode ?? QNRenderMode.ASPECT_FIT}
+                error={!!errors.renderMode}
                 variant="outlined"
-                value={config.renderMode ?? QNRenderMode.ASPECT_FIT}
-                onChange={(event) =>
-                  setConfig({
-                    ...config,
-                    renderMode:
-                      (event.target.value as QNRenderMode) ||
-                      QNRenderMode.ASPECT_FILL,
-                  })
-                }
               >
                 {stretchModeList.map(([option, helperText]) => (
                   <MenuItem key={option} value={option}>
@@ -578,375 +548,321 @@ function ComposedConfigForm() {
                   </MenuItem>
                 ))}
               </TextField>
+              <Grid>
+                <FormControlLabel
+                  label="保持最后帧"
+                  control={
+                    <Checkbox
+                      {...register('holdLastFrame')}
+                      defaultChecked={config.holdLastFrame}
+                    />
+                  }
+                />
+              </Grid>
+              <Grid>
+                <TextField
+                  label="背景地址"
+                  type="url"
+                  {...register('background.url')}
+                  fullWidth
+                  defaultValue={config.background?.url}
+                  error={!!errors.background?.url}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid>
+                <TextField
+                  label="背景宽度"
+                  type="number"
+                  {...register('background.width')}
+                  fullWidth
+                  defaultValue={config.background?.width.toString()}
+                  error={!!errors.background?.width}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid>
+                <TextField
+                  label="背景高度"
+                  type="number"
+                  {...register('background.height')}
+                  fullWidth
+                  defaultValue={config.background?.height.toString()}
+                  error={!!errors.background?.height}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid>
+                <TextField
+                  label="背景x轴距离"
+                  type="number"
+                  {...register('background.x')}
+                  fullWidth
+                  defaultValue={config.background?.x.toString()}
+                  error={!!errors.background?.x}
+                  variant="outlined"
+                />
+              </Grid>
+              <Grid>
+                <TextField
+                  label="背景y轴距离"
+                  type="number"
+                  {...register('background.y')}
+                  fullWidth
+                  defaultValue={config.background?.y.toString()}
+                  error={!!errors.background?.y}
+                  variant="outlined"
+                />
+              </Grid>
+              {watermarks.map((watermark, index, list) => (
+                <Fragment key={watermark.id}>
+                  <Grid>
+                    <TextField
+                      label="水印地址"
+                      type="url"
+                      {...register(`watermarks.${index}.url` as const)}
+                      error={!!errors.watermarks?.[index]?.url}
+                      fullWidth
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid>
+                    <TextField
+                      label="水印高度"
+                      type="number"
+                      {...register(`watermarks.${index}.height` as const)}
+                      error={!!errors.watermarks?.[index]?.height}
+                      fullWidth
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid>
+                    <TextField
+                      label="水印宽度"
+                      type="number"
+                      {...register(`watermarks.${index}.width` as const)}
+                      error={!!errors.watermarks?.[index]?.width}
+                      fullWidth
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid>
+                    <TextField
+                      label="水印x轴距离"
+                      type="number"
+                      {...register(`watermarks.${index}.x` as const)}
+                      error={!!errors.watermarks?.[index]?.x}
+                      fullWidth
+                      variant="outlined"
+                    />
+                  </Grid>
+                  <Grid>
+                    <TextField
+                      label="水印y轴距离"
+                      type="number"
+                      {...register(`watermarks.${index}.y` as const)}
+                      error={!!errors.watermarks?.[index]?.y}
+                      fullWidth
+                      variant="outlined"
+                    />
+                  </Grid>
+                </Fragment>
+              ))}
             </Grid>
-            <Grid>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.holdLastFrame}
-                    onChange={(event) =>
-                      setConfig({
-                        ...config,
-                        holdLastFrame: event.target.checked,
-                      })
-                    }
-                    value={config.holdLastFrame}
-                  />
-                }
-                label="保持最后帧"
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                label="背景地址"
-                fullWidth
-                value={config.background!.url}
-                variant="outlined"
-                onChange={(event) =>
-                  mergeConfig({
-                    background: {
-                      ...config.background!,
-                      url: event.target.value,
-                    },
-                  })
-                }
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                label="背景高度"
-                fullWidth
-                value={config.background!.height}
-                variant="outlined"
-                onChange={(event) =>
-                  mergeConfig({
-                    background: {
-                      ...config.background!,
-                      height: ~~event.target.value,
-                    },
-                  })
-                }
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                label="背景宽度"
-                fullWidth
-                value={config.background!.width}
-                variant="outlined"
-                onChange={(event) =>
-                  mergeConfig({
-                    background: {
-                      ...config.background!,
-                      width: ~~event.target.value,
-                    },
-                  })
-                }
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                label="背景x轴距离"
-                fullWidth
-                value={config.background!.x}
-                variant="outlined"
-                onChange={(event) =>
-                  mergeConfig({
-                    background: {
-                      ...config.background!,
-                      x: ~~event.target.value,
-                    },
-                  })
-                }
-              />
-            </Grid>
-            <Grid>
-              <TextField
-                label="背景y轴距离"
-                fullWidth
-                value={config.background!.y}
-                variant="outlined"
-                onChange={(event) =>
-                  mergeConfig({
-                    background: {
-                      ...config.background!,
-                      y: ~~event.target.value,
-                    },
-                  })
-                }
-              />
-            </Grid>
-            {config.watermarks?.map((watermark, i, list) => (
-              <Fragment key={i}>
-                <Grid>
-                  <TextField
-                    id="outlined-basic"
-                    label="水印地址"
-                    fullWidth
-                    value={watermark.url}
-                    variant="outlined"
-                    onChange={(event) => {
-                      list[i] = {
-                        ...watermark,
-                        url: event.target.value,
-                      }
-                      mergeConfig({
-                        watermarks: list.slice(),
-                      })
-                    }}
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    id="outlined-basic"
-                    label="水印高度"
-                    fullWidth
-                    value={watermark.height}
-                    variant="outlined"
-                    onChange={(event) => {
-                      list[i] = {
-                        ...watermark,
-                        height: ~~event.target.value,
-                      }
-                      mergeConfig({
-                        watermarks: list.slice(),
-                      })
-                    }}
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    id="outlined-basic"
-                    label="水印宽度"
-                    fullWidth
-                    value={watermark.width}
-                    variant="outlined"
-                    onChange={(event) => {
-                      list[i] = {
-                        ...watermark,
-                        width: ~~event.target.value,
-                      }
-                      mergeConfig({
-                        watermarks: list.slice(),
+          </AccordionDetails>
+        </Accordion>
+        <Accordion expanded={nstExpanded[1]} onChange={handleExpand(1)}>
+          <AccordionSummary aria-controls="settings-2">
+            合成设置{' '}
+            {transcodingTracks.length ? `(${transcodingTracks.length})` : ''}
+          </AccordionSummary>
+          <AccordionDetails>
+            {!allTracks.length ? (
+              <Typography
+                display="table"
+                variant="caption"
+                mx="auto"
+                lineHeight={6}
+              >
+                暂无可用媒体流
+              </Typography>
+            ) : (
+              <ListItem>
+                <ListItemAvatar>
+                  <IconButton
+                    onClick={() => {
+                      appendTrack({
+                        trackID: '',
                       })
                     }}
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    id="outlined-basic"
-                    label="水印x轴距离"
-                    fullWidth
-                    value={watermark.x}
-                    variant="outlined"
-                    onChange={(event) => {
-                      list[i] = {
-                        ...watermark,
-                        x: ~~event.target.value,
-                      }
-                      mergeConfig({
-                        watermarks: list.slice(),
-                      })
-                    }}
-                  />
-                </Grid>
-                <Grid>
-                  <TextField
-                    id="outlined-basic"
-                    label="水印y轴距离"
-                    fullWidth
-                    value={watermark.y}
-                    variant="outlined"
-                    onChange={(event) => {
-                      list[i] = {
-                        ...watermark,
-                        y: ~~event.target.value,
-                      }
-                      mergeConfig({
-                        watermarks: list.slice(),
-                      })
-                    }}
-                  />
-                </Grid>
-              </Fragment>
-            ))}
-          </Grid>
-        </AccordionDetails>
-      </Accordion>
-      <Accordion
-        expanded={nstExpanded[1]}
-        onChange={handleExpand(1)}
-        disabled={!allTracks.length}
-      >
-        <AccordionSummary aria-controls="settings-2">
-          合成设置 {composedTracks.length ? `(${composedTracks.length})` : ''}
-        </AccordionSummary>
-        <AccordionDetails>
-          {allTracks.map((track, index) => {
-            const trackID = track.trackID!
-            const userID = track.userID!
-            const trackConfig = composedTracks.find(
-              (config) => config.trackID == trackID
-            )
-            const selected = !!trackConfig
+                  >
+                    <AddCircleOutlineRounded />
+                  </IconButton>
+                </ListItemAvatar>
+                <ListItemText>添加媒体流</ListItemText>
+              </ListItem>
+            )}
+            {transcodingTracks.map((trackConfig, index) => {
+              const trackID = trackConfig.trackID
+              const track =
+                refStore.localTracks.get(trackID) ??
+                refStore.remoteTracks.get(trackID)
+              if (!track) {
+                removeTrack(index)
+                return <></>
+              }
 
-            const { id, label, muted, kind } = track.getMediaStreamTrack() ?? {}
-            const displayId = id?.slice(-12) ?? trackID
-            const secondaryText = `[${userID}] #${displayId}`
-            const primaryText = label ?? '未知设备'
+              const userID = track.userID!
 
-            function handleUpdate<
-              T extends keyof QNTranscodingLiveStreamingTrack
-            >(
-              key: T,
-              index: number,
-              value: QNTranscodingLiveStreamingTrack[T]
-            ): void {
-              trackConfig![key] = value
-            }
+              const { id, label, muted, kind } =
+                track.getMediaStreamTrack() ?? {}
+              const displayId = id?.slice(-12) ?? trackID
+              const secondaryText = `[${userID}] #${displayId}`
+              const primaryText = label ?? '未知设备'
 
-            const isVideo = track.isVideo()
-            return (
-              <Fragment key={id}>
-                <ListItemButton
-                  dense
-                  disableGutters
-                  selected={selected}
-                  sx={{
-                    [`& .${svgIconClasses.root}`]: {
-                      m: 'auto',
-                    },
-                  }}
-                  onClick={() => {
-                    if (selected) {
-                      // remove current from list
-                      setComposedTracks((confs) =>
-                        confs.filter((conf) => conf.trackID != trackID)
-                      )
-                    } else {
-                      setComposedTracks((confs) => [
-                        ...confs,
-                        {
-                          trackID,
-                        },
-                      ])
-                    }
-                  }}
-                >
-                  <ListItemIcon>{selected && <CheckRounded />}</ListItemIcon>
-                  <ListItemText
-                    primary={
-                      <Typography
-                        sx={{
-                          [`&>.${svgIconClasses.root}`]: {
-                            fontSize: 'inherit',
-                            verticalAlign: 'middle',
-                            mr: '.5ch',
-                          },
-                        }}
-                      >
-                        <Tooltip
-                          placement="top"
-                          title={isVideo ? '视频轨' : '音轨'}
+              const selected = true
+
+              const isVideo = track.isVideo()
+              return (
+                <Fragment key={trackConfig.id}>
+                  <ListItemButton
+                    dense
+                    disableGutters
+                    selected={selected}
+                    sx={{
+                      [`& .${svgIconClasses.root}`]: {
+                        m: 'auto',
+                      },
+                    }}
+                    // remove current from list
+                    onClick={() => {
+                      removeTrack(index)
+                    }}
+                  >
+                    <ListItemIcon>{selected && <CheckRounded />}</ListItemIcon>
+                    <ListItemText
+                      primary={
+                        <Typography
+                          sx={{
+                            [`&>.${svgIconClasses.root}`]: {
+                              fontSize: 'inherit',
+                              verticalAlign: 'middle',
+                              mr: '.5ch',
+                            },
+                          }}
                         >
-                          {isVideo ? (
-                            <VideocamRounded />
-                          ) : (
-                            <AudiotrackRounded />
-                          )}
-                        </Tooltip>
-                        {primaryText}
-                      </Typography>
-                    }
-                    secondary={secondaryText}
-                  />
-                </ListItemButton>
-                {isVideo && (
-                  <Grow in={selected}>
-                    <Box
-                      p={1}
-                      rowGap={1}
-                      display={selected ? 'flex' : 'none'}
-                      flexDirection="column"
-                    >
-                      <TextField
-                        id="outlined-basic"
-                        label="x轴坐标"
-                        fullWidth
-                        value={trackConfig?.x}
-                        onChange={(event) =>
-                          handleUpdate('x', index, ~~event.target.value)
-                        }
-                        variant="outlined"
-                      />
-                      <TextField
-                        id="outlined-basic"
-                        label="y轴坐标"
-                        fullWidth
-                        value={trackConfig?.y}
-                        onChange={(event) =>
-                          handleUpdate('y', index, ~~event.target.value)
-                        }
-                        variant="outlined"
-                      />
-                      <TextField
-                        id="outlined-basic"
-                        label="层级"
-                        fullWidth
-                        value={trackConfig?.zOrder}
-                        onChange={(event) =>
-                          handleUpdate('zOrder', index, ~~event.target.value)
-                        }
-                        variant="outlined"
-                      />
-                      <TextField
-                        id="outlined-basic"
-                        label="宽"
-                        fullWidth
-                        value={trackConfig?.width}
-                        onChange={(event) =>
-                          handleUpdate('width', index, ~~event.target.value)
-                        }
-                        variant="outlined"
-                      />
-                      <TextField
-                        id="outlined-basic"
-                        label="高"
-                        fullWidth
-                        value={trackConfig?.height}
-                        onChange={(event) =>
-                          handleUpdate('height', index, ~~event.target.value)
-                        }
-                        variant="outlined"
-                      />
-                      <TextField
-                        select
-                        label="渲染模式"
-                        variant="outlined"
-                        value={trackConfig?.renderMode}
-                        onChange={(event) =>
-                          handleUpdate(
-                            'renderMode',
-                            index,
-                            (event.target.value as QNRenderMode) ||
-                              QNRenderMode.ASPECT_FILL
-                          )
-                        }
+                          <Tooltip
+                            placement="top"
+                            title={isVideo ? '视频轨' : '音轨'}
+                          >
+                            {isVideo ? (
+                              <VideocamRounded />
+                            ) : (
+                              <AudiotrackRounded />
+                            )}
+                          </Tooltip>
+                          {primaryText}
+                        </Typography>
+                      }
+                      secondary={secondaryText}
+                    />
+                  </ListItemButton>
+                  {isVideo && (
+                    <Grow in={selected}>
+                      <Box
+                        p={1}
+                        rowGap={1}
+                        display={selected ? 'flex' : 'none'}
+                        flexDirection="column"
                       >
-                        {stretchModeList.map(([option, helperText]) => (
-                          <MenuItem key={option} value={option}>
-                            {helperText}
-                          </MenuItem>
-                        ))}
-                      </TextField>
-                    </Box>
-                  </Grow>
-                )}
-              </Fragment>
-            )
-          })}
-        </AccordionDetails>
-      </Accordion>
-    </>
+                        <TextField
+                          label="x轴坐标"
+                          type="number"
+                          {...register(`transcodingTracks.${index}.x` as const)}
+                          error={!!errors.transcodingTracks?.[index]?.x}
+                          fullWidth
+                          variant="outlined"
+                        />
+                        <TextField
+                          label="y轴坐标"
+                          type="number"
+                          {...register(`transcodingTracks.${index}.y` as const)}
+                          error={!!errors.transcodingTracks?.[index]?.y}
+                          fullWidth
+                          variant="outlined"
+                        />
+                        <TextField
+                          label="层级"
+                          type="number"
+                          {...register(
+                            `transcodingTracks.${index}.zOrder` as const
+                          )}
+                          error={!!errors.transcodingTracks?.[index]?.zOrder}
+                          fullWidth
+                          variant="outlined"
+                        />
+                        <TextField
+                          label="宽"
+                          type="number"
+                          {...register(
+                            `transcodingTracks.${index}.width` as const
+                          )}
+                          error={!!errors.transcodingTracks?.[index]?.width}
+                          fullWidth
+                          variant="outlined"
+                        />
+                        <TextField
+                          label="高"
+                          type="number"
+                          {...register(
+                            `transcodingTracks.${index}.height` as const
+                          )}
+                          error={!!errors.transcodingTracks?.[index]?.height}
+                          fullWidth
+                          variant="outlined"
+                        />
+                        <TextField
+                          select
+                          label="渲染模式"
+                          {...register(
+                            `transcodingTracks.${index}.renderMode` as const
+                          )}
+                          error={
+                            !!errors.transcodingTracks?.[index]?.renderMode
+                          }
+                          variant="outlined"
+                        >
+                          {stretchModeList.map(([option, helperText]) => (
+                            <MenuItem key={option} value={option}>
+                              {helperText}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      </Box>
+                    </Grow>
+                  )}
+                </Fragment>
+              )
+            })}
+          </AccordionDetails>
+        </Accordion>
+      </Box>
+      <Button
+        variant="contained"
+        startIcon={<CheckRounded />}
+        sx={{ m: 1, position: 'relative', bottom: 0 }}
+        type="submit"
+      >
+        确认
+      </Button>
+      {/* <Button
+        variant="outlined"
+        disabled
+        startIcon={<RestartAltRounded />}
+        // WIP
+      >
+        重置
+      </Button> */}
+    </Box>
   )
 }
