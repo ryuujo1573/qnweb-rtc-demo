@@ -76,7 +76,6 @@ function getQualityIcon(networkQuality: Quality) {
 }
 
 export default function UserBox({ user }: UserBoxProps) {
-  // debugger
   const userTracks = refStore.queryRemoteTracks(user.trackIds)
   const videoTracks = userTracks.filter(isVideoTrack)
   const audioTracks = userTracks.filter(isAudioTrack)
@@ -133,6 +132,7 @@ export default function UserBox({ user }: UserBoxProps) {
         border: 'InactiveBorder 2px solid',
         marginInline: 0.2,
         height: '180px',
+        minWidth: '240px',
         '& audio': {
           display: 'none',
         },
@@ -182,7 +182,7 @@ export default function UserBox({ user }: UserBoxProps) {
             '&>span': {
               fontSize: '80%',
               color: '#fff',
-              mixBlendMode: 'hard-light',
+              mixBlendMode: 'difference',
             },
           }}
           children={<span>{user.userID.slice(0, 2)}</span>}
