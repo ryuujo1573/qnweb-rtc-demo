@@ -10,6 +10,8 @@ import {
 } from '@mui/icons-material'
 import {
   Box,
+  Button,
+  buttonBaseClasses,
   Divider,
   Fade,
   IconButton,
@@ -17,6 +19,7 @@ import {
   Link,
   MenuItem,
   paperClasses,
+  svgIconClasses,
   SwipeableDrawer,
   TextField,
   ToggleButton,
@@ -39,7 +42,7 @@ import {
   updateCameraPreset,
 } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkUserId, getPassedTimeDesc } from '../utils'
+import { checkUserId, getPassedTimeDesc, isMobile } from '../utils'
 
 function SectionFragment(props: { title: string; children?: React.ReactNode }) {
   return (
@@ -85,6 +88,9 @@ export default function Layout() {
     dispatch(updateUserId(userIdText))
     setUserIdText('')
   }
+
+  const mobile = isMobile()
+
   return (
     <>
       <Outlet context={topRightBoxRef} />
@@ -93,35 +99,45 @@ export default function Layout() {
           position: 'fixed',
           right: 0,
           top: 0,
-          zIndex: 1,
+          zIndex: 100,
           display: 'flex',
-          flexDirection: 'row-reverse',
+          flexDirection: mobile ? 'column' : 'row-reverse',
+          alignItems: 'center',
+          justifyContent: 'center',
           m: 1,
           gap: 1,
+          [`& > .${buttonBaseClasses.root}`]: {
+            padding: '10px',
+            fontSize: '0.75rem',
+            display: 'flex',
+            flexDirection: 'column',
+            [`.${svgIconClasses.root}`]: {
+              fontSize: '1.8rem',
+            },
+          },
         }}
         ref={topRightBoxRef}
       >
         <IconButton
-          sx={{
-            border: `1px solid ${theme.palette.primary.main}`,
-          }}
           color="primary"
-          size="large"
+          size="medium"
           aria-label="settings"
+          // variant="outlined"
           onClick={toggleDrawerHandler('on')}
         >
-          <SettingsRounded />
+          <SettingsRounded fontSize="large" />
+          设置
         </IconButton>
       </Box>
-      {drawerOpen ? (
+      {drawerOpen && (
         <SwipeableDrawer
-          anchor="right"
+          anchor={'right'}
           open={true}
           onClose={toggleDrawerHandler('off')}
           onOpen={toggleDrawerHandler('on')}
           sx={{
             [`& .${paperClasses.root}`]: {
-              maxWidth: '360px',
+              maxWidth: mobile ? '100%' : '360px',
               gap: 2,
               padding: 2,
             },
@@ -224,7 +240,7 @@ export default function Layout() {
               <MenuItem value="default">默认视频设备</MenuItem>
               {cameras.map((camInfo) => {
                 return (
-                  <MenuItem key={camInfo.groupId} value={camInfo.groupId}>
+                  <MenuItem key={camInfo.deviceId} value={camInfo.deviceId}>
                     {camInfo.label}
                   </MenuItem>
                 )
@@ -267,7 +283,7 @@ export default function Layout() {
             </Link>
           </SectionFragment>
         </SwipeableDrawer>
-      ) : undefined}
+      )}
     </>
   )
 }

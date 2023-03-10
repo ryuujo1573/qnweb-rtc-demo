@@ -40,8 +40,8 @@ const VideoPreview = (props: VideoPreviewProps) => {
         ref={boxRef}
         sx={{
           position: 'relative',
-          width: '328px',
-          minHeight: '180px',
+          // width: '328px',
+          // minHeight: '180px',
         }}
       >
         {showSkeleton ? (

@@ -1,8 +1,4 @@
-import {
-  ContentCopyRounded,
-  DragHandleRounded,
-  RefreshRounded,
-} from '@mui/icons-material'
+import { ContentCopyRounded, DragHandleRounded } from '@mui/icons-material'
 import {
   Box,
   Divider,
@@ -12,13 +8,12 @@ import {
   useTheme,
 } from '@mui/material'
 import {
-  QNConnectionState,
-  QNConnectionState as QState,
   QNLocalAudioTrack,
   QNLocalAudioTrackStats,
   QNLocalVideoTrack,
   QNLocalVideoTrackStats,
   QNTrack,
+  QNConnectionState as QState,
 } from 'qnweb-rtc'
 import {
   Fragment,
@@ -38,12 +33,12 @@ export type DetailPanelProps = {
 }
 
 const stateText = {
-  [QNConnectionState.CONNECTED]: '已连接',
-  [QNConnectionState.CONNECTING]: '连接中',
-  [QNConnectionState.DISCONNECTED]: '未连接',
-  [QNConnectionState.CONNECTED]: '已连接',
-  [QNConnectionState.RECONNECTED]: '已重连',
-  [QNConnectionState.RECONNECTING]: '重连中',
+  [QState.CONNECTED]: '已连接',
+  [QState.CONNECTING]: '连接中',
+  [QState.DISCONNECTED]: '未连接',
+  [QState.CONNECTED]: '已连接',
+  [QState.RECONNECTED]: '已重连',
+  [QState.RECONNECTING]: '重连中',
 }
 
 export default function DetailPanel({ tracks }: DetailPanelProps) {
@@ -129,7 +124,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
         component="aside"
         ref={ref}
         sx={{
-          zIndex: 114514,
+          zIndex: 10,
           position: 'fixed',
           margin: '1ch',
           padding: '1ch',

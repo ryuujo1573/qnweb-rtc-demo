@@ -19,8 +19,6 @@ export const client = QNRTC.createClient()
 // define handler and set callback
 const check = () => store.dispatch(checkDevices())
 
-check()
-
 {
   navigator.mediaDevices.ondevicechange = check
   client.addListener(

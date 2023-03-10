@@ -34,33 +34,10 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
       : undefined
 
     const streamID = getRandomId()
-    const flag = {
-      done: false,
-    }
 
-    async function handler(_: string, state: QLiveState) {
+    function handler(_: string, state: QLiveState) {
       if (state == QLiveState.STARTED) {
-        flag.done = true
-        console.log('LiveState:', state, 'flag:', flag.done)
         if (lastStreamId && lastLiveMode) {
-          // wait for state-changed handling
-          // no more than 1s
-          const result = await Promise.race([
-            new Promise<void>((resolve) => {
-              console.time('flag.done')
-              const id = setInterval(() => {
-                if (flag.done) {
-                  console.timeEnd('flag.done')
-                  resolve()
-                  clearInterval(id)
-                }
-              }, 1)
-            }),
-            delay(1000).then(() => {
-              return 'it took too long to wait'
-            }),
-          ])
-          console.warn(result)
           dispatch(
             stopLive({
               liveMode: lastLiveMode,
@@ -114,17 +91,24 @@ export const stopLive = createAsyncThunk(
 export type LiveMode = 'direct' | 'composed'
 export type LiveState = 'idle' | 'connected' | 'processing'
 
+export type ComposedConfig = Omit<
+  QNTranscodingLiveStreamingConfig,
+  'streamID' | 'url'
+>
+
+export type DirectConfig = {
+  videoTrackId?: string
+  audioTrackId?: string
+}
+
 export type StreamState = {
   liveState: LiveState
   liveMode: LiveMode
   serialNum: number
   lastLiveMode?: LiveMode
   lastStreamId?: string
-  directConfig: {
-    videoTrackId?: string
-    audioTrackId?: string
-  }
-  composedConfig: Omit<QNTranscodingLiveStreamingConfig, 'streamID' | 'url'>
+  directConfig: DirectConfig
+  composedConfig: ComposedConfig
 }
 
 const initialState: StreamState = {
@@ -135,14 +119,15 @@ const initialState: StreamState = {
   lastStreamId: undefined,
   directConfig: {},
   composedConfig: {
-    width: 640,
-    height: 480,
+    bitrate: 1200,
+    width: 1280,
+    height: 720,
     background: {
       url: 'http://pili-playback.qnsdk.com/ivs_background_1280x720.png',
       x: 0,
       y: 0,
-      width: 640,
-      height: 480,
+      width: 1280,
+      height: 720,
     },
     transcodingTracks: [],
   },

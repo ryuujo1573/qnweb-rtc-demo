@@ -118,6 +118,12 @@ export const joinRoom = createAsyncThunk<void, string, ThunkAPI>(
       return rejectWithValue(JSON.stringify(e))
     }
     dispatch(success({ message: '成功加入房间' }))
+    // const demo: RemoteUser[] = new Array(11).fill(0).map((_, i) => ({
+    //   userID: `C${i}eeper`,
+    //   state: QState.CONNECTED,
+    //   trackIds: [],
+    // }))
+    // demo.forEach((u) => dispatch(userJoined(u)))
   }
 )
 

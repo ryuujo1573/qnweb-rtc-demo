@@ -8,14 +8,14 @@ import {
 } from '@mui/material'
 import { blue, grey, lightBlue, teal } from '@mui/material/colors'
 import { FC, useEffect, useMemo, useState } from 'react'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createHashRouter, RouterProvider } from 'react-router-dom'
 
 import { reset } from './features/messageSlice'
 import { selectTheme } from './features/settingSlice'
 import { ErrorPage, Layout, LiveRoomPage, RoomPage, SetupPage } from './pages'
 import { useAppDispatch, useAppSelector } from './store'
 
-const router = createBrowserRouter(
+const router = createHashRouter(
   [
     {
       path: '/',

@@ -11,8 +11,8 @@ export default function LiveRoomPage() {
     navigate('/')
   }
 
-  const src = `https://pili-hls.qnsdk.com/sdk-live/${liveId!}.m3u8`
-  // const src = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+  // const src = `https://pili-hls.qnsdk.com/sdk-live/${liveId!}.m3u8`
+  const src = 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
   // console.log(src)
 
   return (

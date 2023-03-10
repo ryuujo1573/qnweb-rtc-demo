@@ -73,3 +73,7 @@ export function getRandomId(): string {
 export function notNull<T>(t: T): t is Exclude<T, null> {
   return t !== null
 }
+
+export function isMobile() {
+  return window.innerWidth < 500 || /mobile|phone/i.test(navigator.userAgent)
+}

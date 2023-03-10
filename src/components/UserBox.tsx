@@ -1,81 +1,25 @@
-import {
-  Audiotrack,
-  SignalCellularAlt,
-  SignalCellularAlt1Bar,
-  SignalCellularAlt2Bar,
-  VerifiedUserRounded,
-} from '@mui/icons-material'
+import { VerifiedUserRounded } from '@mui/icons-material'
 import {
   Avatar,
   Box,
-  iconClasses,
-  svgIconClasses,
-  Theme,
   Typography,
+  svgIconClasses,
   useTheme,
 } from '@mui/material'
-import {
-  QNNetworkQuality as Quality,
-  QNRemoteAudioTrack,
-  QNRemoteUser,
-} from 'qnweb-rtc'
-import { useDebugValue, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+
 import { client } from '../api'
 import refStore, { RemoteUser } from '../features/tracks'
 import { isAudioTrack, isVideoTrack, stringToColor } from '../utils'
 import AudioWave from './AudioWave'
+import NetworkIcon from './NetworkIcon'
 import VideoBox from './VideoBox'
 
 type UserBoxProps = {
   user: RemoteUser
-}
+} & (typeof Box extends (props: infer Props) => any ? Props : never)
 
-function getQualityIcon(networkQuality: Quality) {
-  switch (networkQuality) {
-    case Quality.EXCELLENT:
-      return (
-        <SignalCellularAlt
-          sx={{
-            color: '#4caf50',
-          }}
-        />
-      )
-    case Quality.GOOD:
-      return (
-        <SignalCellularAlt
-          sx={{
-            color: '#8bc34a',
-          }}
-        />
-      )
-    case Quality.FAIR:
-      return (
-        <SignalCellularAlt2Bar
-          sx={{
-            color: '#ffeb3b',
-          }}
-        />
-      )
-    case Quality.POOR:
-      return (
-        <SignalCellularAlt1Bar
-          sx={{
-            color: '#8bc34a',
-          }}
-        />
-      )
-    case Quality.UNKNOWN:
-      return (
-        <SignalCellularAlt
-          sx={{
-            color: 'grey',
-          }}
-        />
-      )
-  }
-}
-
-export default function UserBox({ user }: UserBoxProps) {
+export default function UserBox({ user, sx }: UserBoxProps) {
   const userTracks = refStore.queryRemoteTracks(user.trackIds)
   const videoTracks = userTracks.filter(isVideoTrack)
   const audioTracks = userTracks.filter(isAudioTrack)
@@ -131,11 +75,10 @@ export default function UserBox({ user }: UserBoxProps) {
         position: 'relative',
         border: 'InactiveBorder 2px solid',
         marginInline: 0.2,
-        height: '180px',
-        minWidth: '240px',
         '& audio': {
           display: 'none',
         },
+        ...sx,
       }}
     >
       <Typography
@@ -143,7 +86,7 @@ export default function UserBox({ user }: UserBoxProps) {
         sx={{
           position: 'absolute',
           // width: 'calc(100% - 2ch)',
-          width: '100%',
+          width: '-webkit-fill-available',
           // margin: '4px',
           padding: '4px',
           bottom: 0,
@@ -170,7 +113,7 @@ export default function UserBox({ user }: UserBoxProps) {
       >
         {icon}
         {user.userID}
-        {getQualityIcon(networkQuality)}
+        <NetworkIcon quality={networkQuality} />
       </Typography>
       {videoTracks.length == 0 && audioTracks.length == 0 ? (
         <Avatar
