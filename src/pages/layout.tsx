@@ -68,6 +68,7 @@ export default function Layout() {
     cameraMuted,
     microphoneMuted,
     neverPrompt,
+    showProfile,
   } = useAppSelector((s) => s.settings)
   const { userId } = useAppSelector((s) => s.identity)
 
@@ -235,6 +236,19 @@ export default function Layout() {
                 }
                 label="跳过入会时设备检查"
               />
+              
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={showProfile}
+                    onChange={(_, v) => {
+                      dispatch(save({ showProfile: v }))
+                    }}
+                  />
+                }
+                label="显示媒体详细信息"
+              />
+
             </Box>
           </SectionFragment>
           <SectionFragment title="用户">

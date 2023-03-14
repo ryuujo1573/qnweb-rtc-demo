@@ -20,7 +20,7 @@ import QNRTC, {
   QNRTCClient,
   QNConnectionDisconnectedInfo,
 } from 'qnweb-rtc'
-import { client } from '../api'
+import { client, fetchToken } from '../api'
 import { store, ThunkAPI } from '../store'
 import { error, message, success } from './messageSlice'
 import refStore, { RemoteUser } from './tracks'
@@ -102,17 +102,30 @@ export const createTrack = createAsyncThunk<
   }
 })
 
-export const joinRoom = createAsyncThunk<void, string, ThunkAPI>(
+type JoinRoomArg =
+  | {
+      token: string
+      roomId?: undefined
+    }
+  | {
+      roomId: string
+      token?: undefined
+    }
+
+export const joinRoom = createAsyncThunk<void, JoinRoomArg, ThunkAPI>(
   'webrtc/joinRoom',
-  async (token, { getState, dispatch, rejectWithValue }) => {
+  async (arg, { getState, dispatch, rejectWithValue }) => {
     const state = getState()
+    const { appId } = state.settings
     const { userId } = state.identity
     if (!userId) {
       return rejectWithValue('加入房间失败，用户名为空！')
     }
+    const { token, roomId } = arg
+    const roomToken = token ?? (await fetchToken({ roomId, appId, userId }))
 
     try {
-      await client.join(token, userId)
+      await client.join(roomToken, userId)
     } catch (e: any) {
       return rejectWithValue(JSON.stringify(e))
     }

@@ -31,12 +31,33 @@ const VideoBox = ({
     if (pinned) {
       // videoTrack.mediaElement?.remove()
     } else {
+      box.classList.add('videoBox')
       if ('isSubscribed' in videoTrack) {
         if (videoTrack.isSubscribed()) {
           videoTrack.play(box, { mirror: false })
         }
       } else {
         videoTrack.play(box, { mirror: false })
+      }
+      if (videoTrack.mediaElement) {
+        videoTrack.mediaElement.ondblclick = (e) => {
+          console.log('# video dblclick!')
+          if (videoTrack) {
+            dispatch(pinTrack(videoTrack.trackID!))
+          }
+        }
+        let touching = false
+        const touchDuration = 800
+        videoTrack.mediaElement.ontouchstart = (e) => {
+          touching = true
+          setTimeout(
+            () => touching && dispatch(pinTrack(undefined)),
+            touchDuration
+          )
+        }
+        videoTrack.mediaElement.ontouchend = (e) => {
+          touching = false
+        }
       }
     }
   }, [boxRef.current, videoTrack, pinned])
@@ -46,20 +67,15 @@ const VideoBox = ({
       ref={boxRef}
       bgcolor={'black'}
       display={pinned ? 'none' : 'flex'}
-      onDoubleClick={() => {
-        if (videoTrack) {
-          dispatch(pinTrack(videoTrack.trackID!))
-        }
-      }}
+      // onDoubleClick={() => {
+      //   console.log('# box dblclick')
+      // }}
       sx={{
         height: '100%',
         width: '100%',
         position: 'relative',
         alignItems: 'center',
         justifyContent: 'center',
-        '&>*': {
-          position: 'absolute',
-        },
         ...sx,
       }}
       {...boxProps}

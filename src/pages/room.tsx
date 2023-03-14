@@ -1,5 +1,6 @@
 import {
   CallEndRounded,
+  CameraswitchRounded,
   CloseRounded,
   ContentCopyRounded,
   MicOffRounded,
@@ -17,6 +18,7 @@ import {
 } from 'qnweb-rtc'
 import React, {
   MouseEventHandler,
+  MutableRefObject,
   createContext,
   useEffect,
   useMemo,
@@ -65,6 +67,8 @@ import {
   useDebounce,
 } from '../utils'
 import { useTopRightBox } from './layout'
+import Draggable from 'react-draggable'
+import { useThrottle } from '../utils/hooks'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -95,10 +99,12 @@ export default function RoomPage() {
     cameras,
     microphones,
     playbacks,
+    facingMode,
     defaultCamera,
     defaultMicrophone,
     defaultPlayback,
     neverPrompt,
+    showProfile,
     cameraMuted,
     microphoneMuted,
   } = useAppSelector((s) => s.settings)
@@ -118,31 +124,42 @@ export default function RoomPage() {
 
   const [oobe, setOobe] = useState(!neverPrompt)
 
-  const isConnected = state == QState.CONNECTED || state == QState.RECONNECTED
+  const connected = state == QState.CONNECTED || state == QState.RECONNECTED
+
+  const syncFlag = useRef('idle')
 
   useEffect(() => {
-    dispatch(checkDevices())
     // if no OOBE panel, do normal inits
-    if (!oobe && state == QState.DISCONNECTED) {
-      if (tokenRef.current) {
-        dispatch(joinRoom(tokenRef.current))
-      } else {
-        fetchToken({ roomId: roomId!, appId, userId }).then((token) => {
-          console.log('#join')
-          dispatch(joinRoom(token))
-        })
+    if (!oobe) {
+      if (syncFlag.current == 'idle') {
+        syncFlag.current = 'connecting'
+        const token = tokenRef.current
+        console.log('#join')
+        if (token) {
+          dispatch(joinRoom({ token }))
+        } else {
+          dispatch(joinRoom({ roomId }))
+        }
       }
-    }
 
-    if (isConnected) {
-      return () => {
-        console.log('#leave')
-        dispatch(leaveRoom())
+      if (syncFlag.current == 'connecting' && connected) {
+        syncFlag.current = 'connected'
+        return () => {
+          if (syncFlag.current == 'connected') {
+            console.log('#leave')
+            dispatch(leaveRoom())
+          }
+        }
       }
     }
   }, [oobe, state])
 
-  useEffect(() => {}, [])
+  useEffect(() => {
+    dispatch(checkDevices())
+    if (connected) {
+      dispatch(leaveRoom())
+    }
+  }, [])
 
   const pinnedBoxRef = useRef<HTMLDivElement>()
 
@@ -164,7 +181,7 @@ export default function RoomPage() {
 
   // handle track mute & unmute
   useEffect(() => {
-    if (isConnected) {
+    if (connected) {
       // create `camTrack` only if set unmuted to true
       if (!camMuted && !camTrack) {
         console.log('#create CAM')
@@ -202,7 +219,7 @@ export default function RoomPage() {
     (isConnected: boolean): MouseEventHandler<HTMLButtonElement> =>
     async (evt) => {
       if (isConnected) {
-        await client.leave()
+        dispatch(leaveRoom())
         const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
           ? 'metaKey'
           : 'ctrlKey'
@@ -212,8 +229,11 @@ export default function RoomPage() {
           navigate('/')
         }
       } else {
-        if (tokenRef.current) {
-          dispatch(joinRoom(tokenRef.current))
+        const token = tokenRef.current
+        if (token) {
+          dispatch(joinRoom({ token }))
+        } else {
+          dispatch(joinRoom({ roomId }))
         }
       }
     }
@@ -232,180 +252,224 @@ export default function RoomPage() {
   }, [mobile])
 
   const boxRef = useTopRightBox()
+  // const [usersShown, setUsersShown] = useState(true)
+
+  // const camBoxRef = useRef<HTMLDivElement>(null)
+  // const screenBoxRef = useRef<HTMLDivElement>(null)
+  const singleClickHandler = useThrottle(() => {
+    if (mobile) {
+      setBottomBarShown((t) => !t)
+      closeBottomBar()
+    }
+  }, 200)
 
   return (
     <Box
       display="contents"
-      onClick={() => {
-        if (mobile) {
-          setBottomBarShown((t) => !t)
-          closeBottomBar()
-        }
+      onDoubleClick={(e) => {
+        // e.persist()
+        console.log('# contents box dblclick')
       }}
+      onClick={singleClickHandler}
     >
-      {oobe && (
-        <OobePanel
-          open
-          onConfirm={(newSettings) => {
-            setOobe(false)
-            if (newSettings.neverPrompt) {
-              dispatch(save(newSettings))
-            } else {
-              dispatch(update(newSettings))
-            }
-          }}
-          // onClose={() => setOobe(false)}
-        />
-      )}
-      <DetailPanel
-        tracks={[camTrack, micTrack, screenVideoTrack, screenAudioTrack]}
-      />
-      {boxRef.current &&
-        createPortal(
-          <StreamingControl disabled={!isConnected} mobile={mobile} />,
-          boxRef.current
+      <>
+        {oobe && (
+          <OobePanel
+            open
+            onConfirm={(newSettings) => {
+              setOobe(false)
+              if (newSettings.neverPrompt) {
+                dispatch(save(newSettings))
+              } else {
+                dispatch(update(newSettings))
+              }
+            }}
+            // onClose={() => setOobe(false)}
+          />
         )}
-      {mobile ? <RoomPage_S /> : <RoomPage_L />}
-      <Fade in={bottomBarShown}>
+        {showProfile && (
+          <DetailPanel
+            tracks={[camTrack, micTrack, screenVideoTrack, screenAudioTrack]}
+          />
+        )}
+        {boxRef.current &&
+          createPortal(
+            <StreamingControl disabled={!connected} mobile={mobile} />,
+            boxRef.current
+          )}
         <Box
-          component="footer"
           sx={{
             position: 'fixed',
-            height: '60px',
-            // zIndex: 114514,
-            background: mobile ? '#00000080' : 'inherit',
-            bottom: 0,
-            left: 0,
-            right: 0,
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            zIndex: 1000,
+            bottom: 0,
           }}
         >
-          <Tooltip title="复制房间链接">
-            <span>
-              <IconButton
-                disabled={!isConnected}
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href)
-                }}
-              >
-                <ContentCopyRounded />
-              </IconButton>
-            </span>
-          </Tooltip>
-          {/* <Tooltip
-                arrow
-                leaveDelay={200}
-                title={
-                  playbacks ? (
-                    <TooltipList
-                      list={playbacks}
-                      initialIndex={playbacks.findIndex(
-                        (pb) => pb.deviceId == defaultPlayback
-                      )}
-                      onSelect={async ({ deviceId }) => {
-                        dispatch(setDefaultPlayback(deviceId))
-                      }}
-                    />
-                  ) : (
-                    '无音频输出'
-                  )
-                }
-              >
+          {camTrack && (
+            <VideoBox
+              sx={{
+                zIndex: 114514,
+                width: '240px',
+                height: '160px',
+                m: 'calc(1rem + 60px) 1rem',
+              }}
+              videoTrack={isVideoTrack(camTrack) ? camTrack : undefined}
+            />
+          )}
+          {screenVideoTrack && (
+            <VideoBox
+              sx={{
+                width: '240px',
+                height: '160px',
+              }}
+              videoTrack={
+                isVideoTrack(screenVideoTrack) ? screenVideoTrack : undefined
+              }
+              onClick={() => {
+                console.log('#clicked')
+              }}
+            />
+          )}
+        </Box>
+        {mobile ? (
+          <RoomPage_S boxRef={pinnedBoxRef} />
+        ) : (
+          <RoomPage_L boxRef={pinnedBoxRef} />
+        )}
+        <Fade in={bottomBarShown}>
+          <Box
+            component="footer"
+            sx={{
+              position: 'fixed',
+              height: '60px',
+              zIndex: 114514,
+              background: mobile ? '#00000080' : 'inherit',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Tooltip title="复制房间链接">
+              <span>
+                <IconButton
+                  disabled={!connected}
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href)
+                  }}
+                >
+                  <ContentCopyRounded />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip
+              arrow
+              leaveDelay={200}
+              title={
+                microphones ? (
+                  <TooltipList
+                    list={microphones}
+                    initialIndex={microphones.findIndex(
+                      (mic) => mic.deviceId == defaultMicrophone
+                    )}
+                    onSelect={({ deviceId }) => {
+                      dispatch(setDefaultMicrophone(deviceId))
+                    }}
+                  />
+                ) : (
+                  '无可用麦克风'
+                )
+              }
+            >
+              <span>
+                <IconButton
+                  disabled={!connected || !microphones}
+                  onClick={() => {
+                    micTrack?.setMuted(true)
+                    setMicMuted(!micMuted)
+                  }}
+                  children={micMuted ? <MicOffRounded /> : <MicRounded />}
+                />
+              </span>
+            </Tooltip>
+            <Button
+              variant="contained"
+              color={connected ? 'error' : 'success'}
+              onClick={onCallButtonClick(connected)}
+              disabled={isConnecting || oobe}
+            >
+              {connected ? (
+                <CallEndRounded key="CallEndRounded" />
+              ) : (
+                <RestartAltRounded key="RestartAltRounded" />
+              )}
+            </Button>
+            <Tooltip
+              arrow
+              leaveDelay={200}
+              title={
+                cameras ? (
+                  <TooltipList
+                    list={cameras}
+                    initialIndex={cameras.findIndex(
+                      (cam) => cam.deviceId == defaultCamera
+                    )}
+                    onSelect={({ deviceId }) => {
+                      dispatch(setDefaultCamera(deviceId))
+                    }}
+                  />
+                ) : (
+                  '无可用摄像头'
+                )
+              }
+            >
+              <span>
+                <IconButton
+                  disabled={!connected || !cameras}
+                  onClick={() => {
+                    camTrack?.setMuted(true)
+                    setCamMuted(!camMuted)
+                  }}
+                  children={
+                    camMuted ? <VideocamOffRounded /> : <VideocamRounded />
+                  }
+                />
+              </span>
+            </Tooltip>
+            {mobile ? (
+              <Tooltip title="镜头翻转">
                 <span>
                   <IconButton
-                    disabled={!isConnected || !playbacks}
-                    children={<TuneRounded />}
+                    children={<CameraswitchRounded />}
+                    disabled={!connected}
+                    onClick={() => {
+                      dispatch(
+                        update({
+                          facingMode:
+                            facingMode == 'user' ? 'environment' : 'user',
+                        })
+                      )
+                    }}
                   />
                 </span>
-              </Tooltip> */}
-          <Tooltip
-            arrow
-            leaveDelay={200}
-            title={
-              microphones ? (
-                <TooltipList
-                  list={microphones}
-                  initialIndex={microphones.findIndex(
-                    (mic) => mic.deviceId == defaultMicrophone
-                  )}
-                  onSelect={({ deviceId }) => {
-                    dispatch(setDefaultMicrophone(deviceId))
-                  }}
-                />
-              ) : (
-                '无可用麦克风'
-              )
-            }
-          >
-            <span>
-              <IconButton
-                disabled={!isConnected || !microphones}
-                onClick={() => {
-                  micTrack?.setMuted(true)
-                  setMicMuted(!micMuted)
-                }}
-                children={micMuted ? <MicOffRounded /> : <MicRounded />}
-              />
-            </span>
-          </Tooltip>
-          <Button
-            variant="contained"
-            color={isConnected ? 'error' : 'success'}
-            onClick={onCallButtonClick(isConnected)}
-            disabled={isConnecting || oobe}
-          >
-            {isConnected ? (
-              <CallEndRounded key="CallEndRounded" />
+              </Tooltip>
             ) : (
-              <RestartAltRounded key="RestartAltRounded" />
+              <Tooltip leaveDelay={200} title="屏幕共享">
+                <span>
+                  <IconButton
+                    onClick={onScreenShareClick}
+                    color={screenSharing ? 'primary' : 'default'}
+                    disabled={!connected || mobile}
+                    children={<ScreenShareRounded />}
+                  />
+                </span>
+              </Tooltip>
             )}
-          </Button>
-          <Tooltip
-            arrow
-            leaveDelay={200}
-            title={
-              cameras ? (
-                <TooltipList
-                  list={cameras}
-                  initialIndex={cameras.findIndex(
-                    (cam) => cam.deviceId == defaultCamera
-                  )}
-                  onSelect={({ deviceId }) => {
-                    dispatch(setDefaultCamera(deviceId))
-                  }}
-                />
-              ) : (
-                '无可用摄像头'
-              )
-            }
-          >
-            <span>
-              <IconButton
-                disabled={!isConnected || !cameras}
-                onClick={() => {
-                  camTrack?.setMuted(true)
-                  setCamMuted(!camMuted)
-                }}
-                children={
-                  camMuted ? <VideocamOffRounded /> : <VideocamRounded />
-                }
-              />
-            </span>
-          </Tooltip>
-          <Tooltip leaveDelay={200} title={'屏幕共享'}>
-            <span>
-              <IconButton
-                onClick={onScreenShareClick}
-                color={screenSharing ? 'primary' : 'default'}
-                disabled={!isConnected || mobile}
-                children={<ScreenShareRounded />}
-              />
-            </span>
-          </Tooltip>
-        </Box>
-      </Fade>
+          </Box>
+        </Fade>
+      </>
     </Box>
   )
 
@@ -419,181 +483,201 @@ export default function RoomPage() {
       dispatch(removeTrack('screenAudio'))
     }
   }
+}
 
-  function RoomPage_S() {
-    const dispatch = useAppDispatch()
-    const { users } = useAppSelector((s) => s.webrtc)
+function RoomPage_S({
+  boxRef: ref,
+}: {
+  boxRef: MutableRefObject<HTMLDivElement | undefined>
+}) {
+  const { users, pinnedTrackId } = useAppSelector((s) => s.webrtc)
+  const dispatch = useAppDispatch()
 
-    const parts: RemoteUser[][] = []
-    users.forEach((_, i, array) => {
-      const n = 4
-      // truncate digits using bitwise ops
-      const period = (i / n) >> 0
-      if (i % n == 0) {
-        parts.push(array.slice(period * n, period * n + n))
-      }
-    })
+  // const parts = useMemo(() => {
+  const parts: RemoteUser[][] = []
+  users.forEach((_, i, array) => {
+    const n = 4
+    // truncate digits using bitwise ops
+    const period = (i / n) >> 0
+    if (i % n == 0) {
+      parts.push(array.slice(period * n, period * n + n))
+    }
+  })
+  // return parts
+  // }, [users])
 
-    return (
-      <Box flex={1}>
-        <Box
-          sx={{
-            height: '100%',
-            width: '100%',
-          }}
-        >
-          <Swiper pagination modules={[Pagination]}>
-            {parts.map((page) => (
-              <SwiperSlide>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    height: '100%',
-                    width: '100%',
-                    gap: '.2ch',
-                    grid: '1fr 1fr / 1fr 1fr',
-                  }}
-                >
-                  {page.map((user, index, users) => {
-                    const color = stringToColor(user.userID) + '80'
-                    const bgcolor = stringToColor(user.userID)
-
-                    let gridArea = (() => {
-                      switch (users.length) {
-                        case 1:
-                          return '1 / 1 / span 3 / span 3'
-                        case 2:
-                          return 'auto / 1 / auto / span 3'
-                        case 3:
-                          return 'auto'
-                        default:
-                          return 'auto'
-                      }
-                    })()
-
-                    return (
-                      <UserBox
-                        key={user.userID}
-                        sx={{
-                          // flex: '1 1 40%',
-                          width: '100%',
-                          height: '100%',
-                          gridArea,
-                        }}
-                        user={user}
-                      >
-                        <Avatar
-                          sx={{
-                            margin: 'auto',
-                            bgcolor,
-                            color,
-                            textTransform: 'uppercase',
-                            '&>span': {
-                              fontSize: '80%',
-                              color: '#fff',
-                              mixBlendMode: 'difference',
-                            },
-                          }}
-                          children={<span>{user.userID.slice(0, 2)}</span>}
-                        />
-                      </UserBox>
-                    )
-                  })}
-                </Box>
-              </SwiperSlide>
-            ))}
-          </Swiper>
-        </Box>
-      </Box>
-    )
-  }
-
-  function RoomPage_L() {
-    const [usersShown, setUsersShown] = useState(true)
-
-    return (
-      <>
-        <Box
-          component="header"
-          sx={{
-            display: 'flex',
-            width: '100%',
-            bgcolor: '#aaaaaa10',
-            overflow: 'auto',
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              mx: 'auto',
+  const modules = useRef([Pagination])
+  let touching = false
+  const touchDuration = 800
+  return (
+    <Box flex={1}>
+      <Swiper pagination modules={modules.current}>
+        {pinnedTrackId && (
+          <SwiperSlide
+            onTouchStart={() => {
+              touching = true
+              setTimeout(
+                () => touching && dispatch(pinTrack(undefined)),
+                touchDuration
+              )
+            }}
+            onTouchEnd={() => {
+              touching = false
             }}
           >
-            {users.map((user) => {
-              return (
-                <UserBox
-                  key={user.userID}
-                  user={user}
-                  sx={{
-                    minWidth: '240px',
-                    height: '180px',
-                  }}
-                />
-              )
-            })}
-          </Box>
-        </Box>
+            <Box
+              ref={ref}
+              sx={{
+                display: 'contents',
+              }}
+            ></Box>
+          </SwiperSlide>
+        )}
+        {parts.map((page, i) => (
+          <SwiperSlide key={`page-${i}`}>
+            <Box
+              sx={{
+                display: 'grid',
+                height: '100%',
+                width: '100%',
+                gap: '.2ch',
+                grid: '1fr 1fr / 1fr 1fr',
+              }}
+            >
+              {page.map((user, index, users) => {
+                const color = stringToColor(user.userID) + '80'
+                const bgcolor = stringToColor(user.userID)
+
+                let gridArea = (() => {
+                  switch (users.length) {
+                    case 1:
+                      return '1 / 1 / span 3 / span 3'
+                    case 2:
+                      return 'auto / 1 / auto / span 3'
+                    case 3:
+                      return 'auto'
+                    default:
+                      return 'auto'
+                  }
+                })()
+
+                return (
+                  <UserBox
+                    key={user.userID}
+                    sx={{
+                      // flex: '1 1 40%',
+                      width: '100%',
+                      height: '100%',
+                      gridArea,
+                      '& .videoBox': {
+                        width: '100%',
+                        height: '100%',
+                      },
+                    }}
+                    user={user}
+                  >
+                    <Avatar
+                      sx={{
+                        margin: 'auto',
+                        bgcolor,
+                        color,
+                        textTransform: 'uppercase',
+                        '&>span': {
+                          fontSize: '80%',
+                          color: '#fff',
+                          mixBlendMode: 'difference',
+                        },
+                      }}
+                      children={<span>{user.userID.slice(0, 2)}</span>}
+                    />
+                  </UserBox>
+                )
+              })}
+            </Box>
+          </SwiperSlide>
+        ))}
+      </Swiper>
+    </Box>
+  )
+}
+
+function RoomPage_L({
+  boxRef: ref,
+}: {
+  boxRef: MutableRefObject<HTMLDivElement | undefined>
+}) {
+  const { users, pinnedTrackId } = useAppSelector((s) => s.webrtc)
+  const dispatch = useAppDispatch()
+  return (
+    <>
+      <Box
+        component="header"
+        sx={{
+          display: 'flex',
+          width: '100%',
+          bgcolor: '#aaaaaa10',
+          overflow: 'auto',
+        }}
+      >
         <Box
-          component="main"
           sx={{
-            flex: 1,
-            position: 'relative',
             display: 'flex',
-            height: 'calc(100% - 180px)',
+            mx: 'auto',
           }}
         >
-          <Box
-            ref={pinnedBoxRef}
+          {users.map((user) => {
+            return (
+              <UserBox
+                key={user.userID}
+                user={user}
+                sx={{
+                  minWidth: '240px',
+                  height: '180px',
+                }}
+              />
+            )
+          })}
+        </Box>
+      </Box>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          position: 'relative',
+          display: 'flex',
+          height: 'calc(100% - 180px)',
+        }}
+      >
+        <Box
+          ref={ref}
+          sx={{
+            display: 'contents',
+            backgroundColor: 'black',
+            '&>video': {
+              width: 'inherit !important',
+              margin: 'auto',
+            },
+          }}
+          onDoubleClick={() => {
+            dispatch(pinTrack(undefined))
+          }}
+        >
+          <IconButton
             sx={{
-              display: 'contents',
-              backgroundColor: 'black',
-              '&>video': {
-                width: 'inherit !important',
-                margin: 'auto',
-              },
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              zIndex: 1000,
+              display: pinnedTrackId ? 'static' : 'none',
             }}
-            onDoubleClick={() => {
+            onClick={() => {
               dispatch(pinTrack(undefined))
             }}
           >
-            <IconButton
-              sx={{
-                position: 'absolute',
-                right: 0,
-                top: 0,
-                zIndex: 1000,
-                display: pinnedTrackId ? 'static' : 'none',
-              }}
-              onClick={() => {
-                dispatch(pinTrack(undefined))
-              }}
-            >
-              <CloseRounded fontSize="medium" />
-            </IconButton>
-          </Box>
-          {camTrack ? (
-            <VideoBox
-              videoTrack={isVideoTrack(camTrack) ? camTrack : undefined}
-              sx={{
-                position: 'fixed',
-                left: '30px',
-                bottom: '30px',
-                width: '240px',
-                height: '160px',
-              }}
-            />
-          ) : undefined}
+            <CloseRounded fontSize="medium" />
+          </IconButton>
         </Box>
-      </>
-    )
-  }
+      </Box>
+    </>
+  )
 }

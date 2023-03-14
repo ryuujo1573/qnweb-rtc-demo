@@ -30,6 +30,7 @@ export interface Settings {
   cameraMuted?: boolean
   microphoneMuted?: boolean
   neverPrompt: boolean
+  showProfile: boolean
 }
 
 const storageKeys = {
@@ -46,6 +47,7 @@ const storageKeys = {
   defaultMicrophone: 'default-microphone',
   defaultPlayback: 'microphone',
   neverPrompt: 'never-prompt',
+  showProfile: 'show-profile',
 } as const satisfies Partial<Record<keyof Settings, string>>
 
 const initialState: Settings = {
@@ -67,6 +69,7 @@ const initialState: Settings = {
   microphoneMuted:
     localStorage.getItem(storageKeys.microphoneMuted) == 'true' ?? false,
   neverPrompt: localStorage.getItem(storageKeys.neverPrompt) == 'true' ?? false,
+  showProfile: localStorage.getItem(storageKeys.showProfile) == 'true' ?? false,
 }
 
 export const checkDevices = createAsyncThunk(

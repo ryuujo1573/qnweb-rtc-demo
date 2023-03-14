@@ -20,15 +20,29 @@ export function delay(ms: number) {
 }
 
 export function debounce<TArgs extends any[]>(
-  fn: (...arg: TArgs) => void,
+  fn: (...args: TArgs) => void,
   interval: number
 ): typeof fn {
   let timeout = -1
-  return (...args: any[]) => {
+  return (...args: TArgs) => {
     if (timeout !== -1) {
       clearTimeout(timeout)
     }
     timeout = window.setTimeout(fn, interval, ...args)
+  }
+}
+
+export function throttle<TArgs extends any[]>(
+  fn: (...args: TArgs) => void,
+  interval: number
+): typeof fn {
+  let idle = true
+  return (...args: TArgs) => {
+    if (idle) {
+      idle = false
+      fn(...args)
+      setTimeout(() => (idle = true), interval)
+    }
   }
 }
 

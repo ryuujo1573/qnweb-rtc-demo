@@ -43,7 +43,6 @@ export default function UserBox({ user, sx }: UserBoxProps) {
   useEffect(() => {
     const timer = setInterval(() => {
       const quality = client.getUserNetworkQuality(user.userID)
-      console.log('current', quality)
       setNetworkQuality(quality)
     }, updateInterval)
 
@@ -88,7 +87,7 @@ export default function UserBox({ user, sx }: UserBoxProps) {
           // width: 'calc(100% - 2ch)',
           width: '-webkit-fill-available',
           // margin: '4px',
-          padding: '4px',
+          padding: 0.5,
           bottom: 0,
           zIndex: 2,
           overflow: 'hidden',

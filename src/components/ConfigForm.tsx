@@ -44,7 +44,7 @@ import { useAppDispatch, useAppSelector } from '../store'
 import { isAudioTrack, isVideoTrack } from '../utils'
 
 const Accordion = styled((props: AccordionProps) => (
-  <MuiAccordion disableGutters elevation={0} square {...props} />
+  <MuiAccordion disableGutters elevation={0} {...props} />
 ))(({ theme }) => ({
   border: `1px solid ${theme.palette.divider}`,
   borderRadius: 0,
@@ -212,16 +212,6 @@ export const ComposedConfigForm = forwardRef<
     name: 'transcodingTracks',
   })
 
-  useEffect(() => {
-    appendTrack(
-      allTracks.map((t) => {
-        return {
-          trackID: t.trackID!,
-        }
-      })
-    )
-  }, [])
-
   const {
     fields: watermarks,
     append: appendWatermark,
@@ -238,6 +228,8 @@ export const ComposedConfigForm = forwardRef<
 
   const { composedConfig: config } = useAppSelector((s) => s.stream)
 
+  const [editing, setEditing] = useState(false)
+  const [pendingNewTrackId, setNewTrackId] = useState('')
   const [nstExpanded, setExpanded] = useState([false, false])
   const handleExpand = (i: number) => (_evt: unknown, expanded: boolean) => {
     setExpanded((ls) => {
@@ -546,20 +538,61 @@ export const ComposedConfigForm = forwardRef<
                 暂无可用媒体流
               </Typography>
             ) : (
-              <ListItem>
-                <ListItemAvatar>
-                  <IconButton
-                    onClick={() => {
-                      appendTrack({
-                        trackID: '',
-                      })
-                    }}
-                  >
-                    <AddCircleOutlineRounded />
-                  </IconButton>
-                </ListItemAvatar>
-                <ListItemText>添加媒体流</ListItemText>
-              </ListItem>
+              <>
+                <ListItem>
+                  <ListItemAvatar>
+                    <IconButton
+                      onClick={() => {
+                        setEditing((editing) => !editing)
+                      }}
+                    >
+                      <AddCircleOutlineRounded />
+                    </IconButton>
+                  </ListItemAvatar>
+                  <ListItemText>添加媒体流</ListItemText>
+                </ListItem>
+                {editing && (
+                  <Grow in={editing}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        m: 1,
+                      }}
+                    >
+                      <TextField
+                        select
+                        fullWidth
+                        size="small"
+                        label="选择媒体轨道"
+                        value={pendingNewTrackId}
+                        onChange={(evt) => {
+                          setNewTrackId(evt.target.value)
+                        }}
+                      >
+                        {allTracks.map((t) => {
+                          return (
+                            <MenuItem key={t.trackID} value={t.trackID}>
+                              {t.userID} | {t.trackID}
+                            </MenuItem>
+                          )
+                        })}
+                      </TextField>
+                      <Button
+                        disabled={!pendingNewTrackId}
+                        onClick={() => {
+                          if (pendingNewTrackId) {
+                            appendTrack({
+                              trackID: pendingNewTrackId,
+                            })
+                          }
+                        }}
+                      >
+                        添加
+                      </Button>
+                    </Box>
+                  </Grow>
+                )}
+              </>
             )}
             {transcodingTracks.map((trackConfig, index) => {
               const trackID = trackConfig.trackID
@@ -629,7 +662,7 @@ export const ComposedConfigForm = forwardRef<
                   {isVideo && (
                     <Grow in={selected}>
                       <Box
-                        p={1}
+                        p={2}
                         rowGap={1}
                         display={selected ? 'flex' : 'none'}
                         flexDirection="column"
@@ -641,6 +674,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.x` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.x}
+                          size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -651,6 +685,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.y` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.y}
+                          size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -661,6 +696,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.zOrder` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.zOrder}
+                          size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -671,6 +707,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.width` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.width}
+                          size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -681,6 +718,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.height` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.height}
+                          size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -693,6 +731,8 @@ export const ComposedConfigForm = forwardRef<
                           error={
                             !!errors.transcodingTracks?.[index]?.renderMode
                           }
+                          size="small"
+                          fullWidth
                           variant="outlined"
                         >
                           {stretchModeList.map(([option, helperText]) => (
