@@ -48,13 +48,17 @@ const check = () => store.dispatch(checkDevices())
   client.addListener(
     'user-published',
     async (uid: string, qntracks: QNRemoteTrack[]) => {
-      store.dispatch(subscribe(qntracks))
+      if (!store.getState().webrtc.livemode) {
+        store.dispatch(subscribe(qntracks))
+      }
     }
   )
   client.addListener(
     'user-unpublished',
     async (uid: string, qntracks: QNRemoteTrack[]) => {
-      store.dispatch(unsubscribe(qntracks))
+      if (!store.getState().webrtc.livemode) {
+        store.dispatch(unsubscribe(qntracks))
+      }
     }
   )
 }

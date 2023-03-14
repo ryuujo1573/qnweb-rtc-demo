@@ -26,8 +26,8 @@ export default function LiveRoomPage() {
 
   useEffect(() => {
     if (shouldJoinRoom) {
-      dispatch(setLivemode(false))
-      dispatch(joinRoom(liveId))
+      dispatch(setLivemode(true))
+      dispatch(joinRoom({ roomId: liveId }))
     }
     listUsers({ appId, roomId: liveId! }).then((users) => {
       if (users.length == 0) {
