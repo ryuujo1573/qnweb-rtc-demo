@@ -1,84 +1,60 @@
-import { Box, BoxProps } from '@mui/material'
+import { Box, BoxProps, styled } from '@mui/material'
 import { QNLocalVideoTrack, QNRemoteVideoTrack } from 'qnweb-rtc'
 import { useContext, useEffect, useRef } from 'react'
-import { StageContext } from '../pages/room'
+import { useAppDispatch, useAppSelector } from '../store'
+import { pinTrack } from '../features/webrtcSlice'
 
-export interface VideoBoxProps extends BoxProps {
+export interface VideoBoxProps {
   videoTrack: QNRemoteVideoTrack | QNLocalVideoTrack | undefined
-  // mirror?: boolean
 }
 
-export default function VideoBox({
+// TODO: right click context menu. (mute / mirror / pin)
+const VideoBox = ({
   videoTrack,
-  className,
   sx,
-  children,
-}: VideoBoxProps) {
+  ...boxProps
+}: VideoBoxProps & BoxProps) => {
   const boxRef = useRef<HTMLDivElement>()
-  const {
-    boxRef: pinnedBoxRef,
-    setTrack: setPinnedTrack,
-    track: pinnedTrack,
-  } = useContext(StageContext)
+  const dispatch = useAppDispatch()
+  const pinnedTrackId = useAppSelector((s) => s.webrtc.pinnedTrackId)
 
-  console.log('pinnedTrack', pinnedTrack)
-  const pinned = videoTrack != undefined && pinnedTrack == videoTrack
+  const pinned =
+    videoTrack != undefined &&
+    pinnedTrackId != undefined &&
+    videoTrack.trackID == pinnedTrackId
 
   useEffect(() => {
-    const target = pinned ? pinnedBoxRef.current : boxRef.current
-    console.log(
-      'videoTrack',
-      pinned ? 'pinned' : 'unpinned',
-      videoTrack,
-      pinnedTrack
-    )
-    console.log('target', target)
-    if (target == undefined || !videoTrack) return
+    const box = boxRef.current
 
-    // if it's remote track
-    if ('isSubscribed' in videoTrack) {
-      console.log('remoteTrack', videoTrack.isSubscribed())
-      if (videoTrack.isSubscribed()) {
-        videoTrack.play(target, { mirror: false })
-      } else {
-        // TODO: subscribe and save returned track
-        target.append('not subscribed')
-      }
-    } else {
-      videoTrack.play(target, { mirror: false })
-    }
+    if (box == undefined || videoTrack == undefined) return
 
-    // clear Effect from outer state changes
     if (pinned) {
-      return () => {
-        setPinnedTrack((possibleNewTrack) => {
-          // `pinnedTrack` from current closure is the old track
-
-          if (pinnedTrack != possibleNewTrack) {
-            // if there's a new track set when clearing effects
-            // keep it (next pinned track)
-            return possibleNewTrack
-          } else {
-            // if it's just the same old track, and need a dispose
-            // clear it (no pinned track)
-            return undefined
-          }
-        })
+      // videoTrack.mediaElement?.remove()
+    } else {
+      if ('isSubscribed' in videoTrack) {
+        if (videoTrack.isSubscribed()) {
+          videoTrack.play(box, { mirror: false })
+        }
+      } else {
+        videoTrack.play(box, { mirror: false })
       }
     }
-    // }, [target, mirror])
   }, [boxRef.current, videoTrack, pinned])
 
   return (
     <Box
-      className={className}
       ref={boxRef}
       bgcolor={'black'}
+      display={pinned ? 'none' : 'flex'}
+      onDoubleClick={() => {
+        if (videoTrack) {
+          dispatch(pinTrack(videoTrack.trackID!))
+        }
+      }}
       sx={{
         height: '100%',
         width: '100%',
         position: 'relative',
-        display: pinned ? 'none' : 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         '&>*': {
@@ -86,13 +62,9 @@ export default function VideoBox({
         },
         ...sx,
       }}
-      onDoubleClick={() => {
-        if (videoTrack) {
-          setPinnedTrack(videoTrack)
-        }
-      }}
-    >
-      {children}
-    </Box>
+      {...boxProps}
+    ></Box>
   )
 }
+
+export default VideoBox

@@ -39,7 +39,6 @@ export const createTrack = createAsyncThunk<
 >('webrtc/createTrack', async (tag, { dispatch, getState }) => {
   let tracks: QNLocalTrack[] = []
   const {
-    mirror: _,
     facingMode,
     cameraPreset,
     defaultCamera,
@@ -183,12 +182,15 @@ type WebRTCState = {
   }
   connectionState: QState
   users: RemoteUser[]
+  livemode: boolean
+  pinnedTrackId?: string
 }
 
 const initialState: WebRTCState = {
   localTrack: {},
   connectionState: QState.DISCONNECTED,
   users: [],
+  livemode: false,
 }
 
 const webrtcSlice = createSlice({
@@ -198,6 +200,9 @@ const webrtcSlice = createSlice({
     stateChanged: (state, { payload }: PayloadAction<QState>) => {
       console.log(payload)
       state.connectionState = payload
+    },
+    setLivemode: (state, { payload }: PayloadAction<boolean>) => {
+      state.livemode = payload
     },
     userJoined: (state, { payload }: PayloadAction<RemoteUser>) => {
       state.users.push(payload)
@@ -235,6 +240,9 @@ const webrtcSlice = createSlice({
         }
       }
     },
+    pinTrack: (state, { payload }: PayloadAction<string | undefined>) => {
+      state.pinnedTrackId = payload
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -248,7 +256,7 @@ const webrtcSlice = createSlice({
         const { userId, trackIds } = action.payload
         const user = state.users.find((u) => u.userID == userId)!
 
-        user.trackIds = trackIds
+        user.trackIds.push(...trackIds)
       })
       .addCase(unsubscribe.fulfilled, (state, action) => {
         const { userId, trackIds: removals } = action.payload
@@ -269,5 +277,11 @@ const webrtcSlice = createSlice({
 
 export default webrtcSlice.reducer
 
-export const { stateChanged, userJoined, userLeft, removeTrack } =
-  webrtcSlice.actions
+export const {
+  stateChanged,
+  userJoined,
+  userLeft,
+  removeTrack,
+  setLivemode,
+  pinTrack,
+} = webrtcSlice.actions

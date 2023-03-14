@@ -7,6 +7,7 @@ import UserDialog from './UserDialog'
 import VideoBox from './VideoBox'
 import VideoPlayer from './VideoPlayer'
 import VideoPreview from './VideoPreview'
+import OobePanel from './OobePanel'
 
 export {
   AudioWave,
@@ -18,4 +19,5 @@ export {
   VideoBox,
   VideoPlayer,
   VideoPreview,
+  OobePanel,
 }

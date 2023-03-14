@@ -94,20 +94,17 @@ export default function UserBox({ user, sx }: UserBoxProps) {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
-          mixBlendMode: 'difference',
+          mixBlendMode: 'hard-light',
           transitionDuration: '0.2s',
           [`&>.${svgIconClasses.root}`]: {
             fontSize: 'inherit',
             verticalAlign: 'middle',
             marginInline: '4px',
-            '&:last-child': {
-              mixBlendMode: 'normal',
-            },
           },
+          bgcolor: '#00000060',
           ':hover': {
-            bgcolor: '#00000080',
             color: 'whitesmoke',
-            mixBlendMode: 'normal',
+            bgcolor: '#000000cc',
           },
         }}
       >
@@ -125,7 +122,7 @@ export default function UserBox({ user, sx }: UserBoxProps) {
             '&>span': {
               fontSize: '80%',
               color: '#fff',
-              mixBlendMode: 'difference',
+              mixBlendMode: 'hard-light',
             },
           }}
           children={<span>{user.userID.slice(0, 2)}</span>}
@@ -145,7 +142,14 @@ export default function UserBox({ user, sx }: UserBoxProps) {
       })}
       {...videoTracks.length == 0
         ? audioTracks.map((track, i) => {
-            return <AudioWave key={user.userID + 'a' + i} track={track} />
+            return (
+              <AudioWave
+                key={user.userID + 'a' + i}
+                track={track}
+                width={240}
+                height={180}
+              />
+            )
           })
         : []}
     </Box>

@@ -58,3 +58,54 @@ const check = () => store.dispatch(checkDevices())
     }
   )
 }
+
+export function getRtmpUrl(path: string, serialNum?: string | number): string {
+  const base = `rtmp://pili-publish.qnsdk.com/sdk-live/${path}`
+  if (serialNum) {
+    return base + `?serialnum=${serialNum}`
+  }
+  return base
+}
+
+const API_BASE = 'https://api-demo.qnsdk.com/v1/rtc'
+export async function fetchToken({
+  roomId,
+  appId,
+  userId,
+}: {
+  roomId: string
+  appId: string
+  userId: string
+}) {
+  const resp = await fetch(
+    `${API_BASE}/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`
+  )
+  return await resp.text()
+}
+
+export function decodeToken(token: string) {
+  const jsonBase64 = token.split(':').pop()!
+  try {
+    const message: {
+      appId: string
+      expireAt: number
+      permission: 'user' | 'admin'
+      roomName: string
+      userId: string
+    } = JSON.parse(window.atob(jsonBase64))
+    return message
+  } catch {
+    throw new Error('Token 值无效')
+  }
+}
+
+export async function listUsers({
+  appId,
+  roomId,
+}: {
+  appId: string
+  roomId: string
+}): Promise<string[]> {
+  const resp = await fetch(`${API_BASE}/users/app/${appId}/room/${roomId}`)
+  return (await resp.json())['users'].map((v: { userId: string }) => v.userId)
+}

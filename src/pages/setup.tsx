@@ -1,13 +1,15 @@
-import { Box, Link, useTheme } from '@mui/material'
-import { ChangeEvent, useState } from 'react'
+import { Box, Button, Link, buttonClasses, useTheme } from '@mui/material'
+import { ChangeEvent, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { CustomTextField } from '../components'
 import { updateUserId, updateUserIdTemp } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
-import { setAppIdTemp } from '../features/settingSlice'
+import { update } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkRoomId, checkUserId, decodeToken, useDebounce } from '../utils'
+import { checkRoomId, checkUserId, useDebounce } from '../utils'
+import { decodeToken } from '../api'
+import Qiniu from '../qiniu.svg'
 
 export default function SetupPage() {
   const theme = useTheme()
@@ -18,23 +20,13 @@ export default function SetupPage() {
 
   const navigate = useNavigate()
 
-  const textChangeHandler = useDebounce(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const roomId = event.target.value
-
-      if (connectById && roomId.length && !checkRoomId(roomId)) {
-        console.error(event.target.value)
-        // todo: debounce changes and show error tints
-      }
-    },
-    1500
-  )
-
+  const [roomInputValue, setRoomInputValue] = useState('')
   const [newUserId, setNewUserId] = useState('')
+  const targetRef = useRef('room')
 
   const step1 = () => (
     <form
-      key="nickname"
+      id="nickname"
       onSubmit={(e) => {
         e.preventDefault()
         if (newUserId && checkUserId(newUserId)) {
@@ -68,16 +60,16 @@ export default function SetupPage() {
 
   const step2 = () => (
     <form
-      key="roomid"
+      id="roomid"
       onSubmit={(e) => {
         e.preventDefault()
+        const target = targetRef.current
+
         if (connectById) {
-          const roomId = (
-            e.currentTarget.elements.namedItem('roomid') as HTMLInputElement
-          ).value
+          const roomId = roomInputValue
           if (checkRoomId(roomId)) {
             // dispatch(fetchDeviceInfo())
-            navigate('/room/' + roomId)
+            navigate(`/${target}/${roomId}`)
           } else {
             dispatch(
               error({
@@ -86,23 +78,28 @@ export default function SetupPage() {
             )
           }
         } else {
-          const roomToken = (
-            e.currentTarget.elements.namedItem('roomid') as HTMLInputElement
-          ).value
-          const { appId, userId, roomName } = decodeToken(roomToken)
-          dispatch(setAppIdTemp(appId))
-          dispatch(updateUserIdTemp(userId))
-          navigate(`/room/${roomName}`, {
-            state: roomToken,
-          })
+          const roomToken = roomInputValue
+          try {
+            const { appId, userId, roomName } = decodeToken(roomToken)
+
+            dispatch(update({ appId }))
+            dispatch(updateUserIdTemp(userId))
+
+            navigate(`/${target}/${roomName}`, {
+              state: roomToken,
+            })
+          } catch {
+            // debugger
+            dispatch(error({ message: 'Token 值无效' }))
+          }
         }
       }}
     >
       <CustomTextField
         autoFocus
         placeholder={connectById ? '请输入房间名' : '请输入 roomToken'}
-        name="roomid"
-        onChange={textChangeHandler}
+        value={roomInputValue}
+        onChange={(evt) => setRoomInputValue(evt.target.value)}
       />
       <Link
         variant="body2"
@@ -118,6 +115,32 @@ export default function SetupPage() {
         {connectById ? '使用 roomToken ?' : '使用房间名?'}
       </Link>
       <input type="submit" hidden />
+      <Box
+        sx={{
+          [`& > .${buttonClasses.root}`]: {
+            fontSize: 16,
+            padding: '14px',
+            borderRadius: '114514px',
+            my: 1,
+            fontWeight: 700,
+          },
+        }}
+      >
+        <Button fullWidth variant="contained" type="submit">
+          会议房间
+        </Button>
+        <Button
+          fullWidth
+          variant="contained"
+          type="submit"
+          color="secondary"
+          onClick={() => {
+            targetRef.current = 'live'
+          }}
+        >
+          直播房间
+        </Button>
+      </Box>
     </form>
   )
 
@@ -133,7 +156,8 @@ export default function SetupPage() {
           flex: '1',
         }}
       >
-        <img src="qiniu.svg" alt="logo" width={300} className="logo" />
+        <img src={Qiniu} alt="logo" width={300} className="logo" />
+
         {!userId ? step1() : step2()}
       </Box>
     </>

@@ -13,7 +13,7 @@ export function isValidPreset(str: string): str is Preset {
   return Object.keys(SUPPORT_VIDEO_ENCODER_CONFIG_LIST).includes(str)
 }
 
-interface Settings {
+export interface Settings {
   themeCode: ThemeCode
   appId: string
   facingMode: FacingMode
@@ -27,21 +27,46 @@ interface Settings {
   defaultMicrophone?: string
   defaultPlayback?: string
   cameraPreset: Preset
+  cameraMuted?: boolean
+  microphoneMuted?: boolean
+  neverPrompt: boolean
 }
 
+const storageKeys = {
+  themeCode: 'color-theme',
+  appId: 'appid',
+  facingMode: 'facing-mode',
+  mirror: 'mirror',
+  liveStreamBaseUrl: 'livestream-url',
+  sei: 'sei',
+  cameraPreset: 'camera-preset',
+  cameraMuted: 'camera-muted',
+  microphoneMuted: 'microphone-muted',
+  defaultCamera: 'default-camera',
+  defaultMicrophone: 'default-microphone',
+  defaultPlayback: 'microphone',
+  neverPrompt: 'never-prompt',
+} as const satisfies Partial<Record<keyof Settings, string>>
+
 const initialState: Settings = {
-  themeCode: (localStorage.getItem('color-theme') as ThemeCode) ?? 'dark',
-  appId: localStorage.getItem('app-id') ?? 'g2m0ya7w7', // demo only
-  facingMode: (localStorage.getItem('facing-mode') as FacingMode) ?? 'user',
-  mirror: localStorage.getItem('mirror') == 'true' ?? false,
+  themeCode:
+    (localStorage.getItem(storageKeys.themeCode) as ThemeCode) ?? 'dark',
+  appId: localStorage.getItem(storageKeys.appId) ?? 'g2m0ya7w7', // demo only
+  facingMode:
+    (localStorage.getItem(storageKeys.facingMode) as FacingMode) ?? 'user',
+  mirror: localStorage.getItem(storageKeys.mirror) == 'true' ?? false,
   liveStreamBaseUrl:
-    localStorage.getItem('livestream-url') ??
+    localStorage.getItem(storageKeys.liveStreamBaseUrl) ??
     'rtmp://pili-publish.qnsdk.com/sdk-live',
   sei: 'timestamp: ${ts}',
   playbacks: [],
   microphones: [],
   cameras: [],
   cameraPreset: '720p',
+  cameraMuted: localStorage.getItem(storageKeys.cameraMuted) == 'true' ?? false,
+  microphoneMuted:
+    localStorage.getItem(storageKeys.microphoneMuted) == 'true' ?? false,
+  neverPrompt: localStorage.getItem(storageKeys.neverPrompt) == 'true' ?? false,
 }
 
 export const checkDevices = createAsyncThunk(
@@ -56,31 +81,26 @@ export const settingSlice = createSlice({
   name: 'settings',
   initialState,
   reducers: {
-    setTheme: (state, { payload: code }: PayloadAction<ThemeCode>) => {
-      state.themeCode = code
-      localStorage.setItem('color-theme', code)
+    update: (state, { payload }: PayloadAction<Partial<Settings>>) => {
+      return {
+        ...state,
+        ...payload,
+      }
     },
-    setAppId: (state, { payload: appId }: PayloadAction<string>) => {
-      state.appId = appId
-      localStorage.setItem('app-id', appId)
-    },
-    setAppIdTemp: (state, { payload: appId }: PayloadAction<string>) => {
-      state.appId = appId
-    },
-    setLiveStreamBaseUrl: (state, { payload: url }: PayloadAction<string>) => {
-      state.liveStreamBaseUrl = url
-      localStorage.setItem('livestream-url', url)
-    },
-    updateFacingMode(
-      state,
-      { payload: facingMode }: PayloadAction<FacingMode>
-    ) {
-      state.facingMode = facingMode
-      localStorage.setItem('facing-mode', facingMode)
-    },
-    toggleMirror(state, { payload: mirror }: PayloadAction<boolean>) {
-      state.mirror = mirror
-      localStorage.setItem('mirror', mirror ? 'true' : 'false')
+    save: (state, { payload }: PayloadAction<Partial<Settings>>) => {
+      for (const key in payload) {
+        if (key in storageKeys) {
+          localStorage.setItem(
+            storageKeys[<keyof typeof storageKeys>key],
+            JSON.stringify(payload[<keyof typeof payload>key])
+          )
+        }
+      }
+
+      return {
+        ...state,
+        ...payload,
+      }
     },
     setDefaultCamera(state, { payload }: PayloadAction<string>) {
       if (state.cameras.find((p) => p.deviceId == payload)) {
@@ -96,9 +116,6 @@ export const settingSlice = createSlice({
       if (state.playbacks.find((p) => p.deviceId == payload)) {
         state.defaultPlayback = payload
       }
-    },
-    updateCameraPreset(state, { payload }: PayloadAction<Preset>) {
-      state.cameraPreset = payload
     },
   },
   extraReducers: (builder) => {
@@ -127,14 +144,9 @@ export const settingSlice = createSlice({
 })
 
 export const {
-  setTheme,
-  setAppId,
-  setAppIdTemp,
-  setLiveStreamBaseUrl,
-  updateFacingMode,
-  toggleMirror,
+  update,
+  save,
   setDefaultCamera,
-  updateCameraPreset,
   setDefaultMicrophone,
   setDefaultPlayback,
 } = settingSlice.actions

@@ -19,7 +19,9 @@ export default function TooltipList<
     label: string
   }
 >({ onSelect, list, initialIndex }: TooltipListProps<T>) {
-  const [selectedIndex, setSelected] = useState(initialIndex)
+  const [selectedIndex, setSelected] = useState(
+    initialIndex == -1 ? 0 : initialIndex
+  )
 
   const listitems = list.map((item, i) => {
     const selected = i == selectedIndex
@@ -48,6 +50,7 @@ export default function TooltipList<
       dense
       disablePadding
       sx={{
+        fontSize: '0.6875rem',
         '& .MuiListItemIcon-root': {
           minWidth: 30,
           marginRight: '4px',

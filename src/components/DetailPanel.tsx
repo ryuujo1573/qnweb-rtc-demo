@@ -54,9 +54,6 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     }
   }, [])
 
-  const handleCopyInvitation = () => {
-    navigator.clipboard.writeText(window.location.href)
-  }
   // seperate tracks & store device labels in tags
   const [audioTracks, videoTracks] = useMemo(
     () => [
@@ -152,16 +149,6 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
           <Typography color={theme.palette.grey[500]} pl="1ch" fontWeight={500}>
             {stateText[state]}
           </Typography>
-          <Tooltip title="复制房间链接">
-            <IconButton
-              onClick={handleCopyInvitation}
-              sx={{
-                marginLeft: 'auto',
-              }}
-            >
-              <ContentCopyRounded />
-            </IconButton>
-          </Tooltip>
         </Typography>
         <Box
           sx={{

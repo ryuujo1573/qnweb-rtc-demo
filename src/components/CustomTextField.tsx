@@ -43,12 +43,12 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   ].join(','),
   [`& > .${inputBaseClasses.input}`]: {
     height: '1rem',
-    '& ~ div': {
-      display: 'none',
-    },
-    '&:valid ~ div': {
-      display: 'inherit',
-    },
+    // '& ~ div': {
+    //   display: 'none',
+    // },
+    // '&:valid ~ div': {
+    //   display: 'inherit',
+    // },
   },
   '&:focus-within': {
     boxShadow: `${alpha(theme.palette.primary.main, 0.25)} 0 0 0 0.2rem`,
@@ -79,15 +79,14 @@ export default function CustomTextField({
 }: InputBaseProps & MUIStyledCommonProps<Theme> & CustomProps) {
   return (
     <StyledInputBase
-      required
       {...props}
-      endAdornment={
-        <InputAdornment position="end">
-          <IconButton edge="end" type="submit">
-            <ArrowForwardRounded />
-          </IconButton>
-        </InputAdornment>
-      }
+      // endAdornment={
+      //   <InputAdornment position="end">
+      //     <IconButton edge="end" type="submit">
+      //       <ArrowForwardRounded />
+      //     </IconButton>
+      //   </InputAdornment>
+      // }
     />
   )
 }

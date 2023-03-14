@@ -11,38 +11,6 @@ export {
   isVideoTrack,
 }
 
-export function getRtmpUrl(path: string, serialNum?: string | number): string {
-  const base = `rtmp://pili-publish.qnsdk.com/sdk-live/${path}`
-  if (serialNum) {
-    return base + `?serialnum=${serialNum}`
-  }
-  return base
-}
-
-export async function fetchToken(
-  roomId: string,
-  appId: string,
-  userId: string
-) {
-  const resp = await fetch(
-    `https://api-demo.qnsdk.com/v1/rtc/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`
-  )
-  return await resp.text()
-}
-
-export function decodeToken(token: string) {
-  const jsonBase64 = token.split(':').pop()!
-  const message: {
-    appId: string
-    expireAt: number
-    permission: 'user' | 'admin'
-    roomName: string
-    userId: string
-  } = JSON.parse(window.atob(jsonBase64))
-
-  return message
-}
-
 export const checkUserId = (v: string) => /^\w{1,24}$/.test(v)
 
 export const checkRoomId = (v: string) => /^[0-9a-zA-Z_-]{3,64}$/.test(v)

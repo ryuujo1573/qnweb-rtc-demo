@@ -2,18 +2,16 @@ import {
   AccountCircleRounded,
   CheckRounded,
   CloseRounded,
-  DarkModeRounded,
   FlipRounded,
-  LightModeRounded,
-  SettingsBrightnessRounded,
   SettingsRounded,
 } from '@mui/icons-material'
 import {
   Box,
-  Button,
   buttonBaseClasses,
+  Checkbox,
   Divider,
   Fade,
+  FormControlLabel,
   IconButton,
   InputAdornment,
   Link,
@@ -21,9 +19,9 @@ import {
   paperClasses,
   svgIconClasses,
   SwipeableDrawer,
+  Switch,
   TextField,
   ToggleButton,
-  ToggleButtonGroup,
   Typography,
   useTheme,
 } from '@mui/material'
@@ -36,10 +34,9 @@ import { allPresets, allPresetsText } from '../consts'
 import { updateUserId } from '../features/identitySlice'
 import {
   isValidPreset,
+  save,
   setDefaultCamera,
-  setTheme,
-  toggleMirror,
-  updateCameraPreset,
+  update,
 } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkUserId, getPassedTimeDesc, isMobile } from '../utils'
@@ -47,7 +44,7 @@ import { checkUserId, getPassedTimeDesc, isMobile } from '../utils'
 function SectionFragment(props: { title: string; children?: React.ReactNode }) {
   return (
     <>
-      <Typography fontWeight={700} variant="body1" color={`#999`}>
+      <Typography sx={{ userSelect: 'none', mt: 2 }} variant="subtitle1">
         {props.title}
       </Typography>
       {props?.children}
@@ -62,8 +59,16 @@ export function useTopRightBox() {
 export default function Layout() {
   const theme = useTheme()
   const dispatch = useAppDispatch()
-  const { themeCode, mirror, cameras, defaultCamera, cameraPreset } =
-    useAppSelector((s) => s.settings)
+  const {
+    themeCode,
+    mirror,
+    cameras,
+    defaultCamera,
+    cameraPreset,
+    cameraMuted,
+    microphoneMuted,
+    neverPrompt,
+  } = useAppSelector((s) => s.settings)
   const { userId } = useAppSelector((s) => s.identity)
 
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -105,15 +110,18 @@ export default function Layout() {
           alignItems: 'center',
           justifyContent: 'center',
           m: 1,
-          gap: 1,
+          // gap: 1,
           [`& > .${buttonBaseClasses.root}`]: {
-            padding: '10px',
-            fontSize: '0.75rem',
+            '--dimension': '4.5rem',
+            '--padding': '.2rem',
+            fontSize: '0.8rem',
             display: 'flex',
             flexDirection: 'column',
             [`.${svgIconClasses.root}`]: {
-              fontSize: '1.8rem',
+              fontSize: '2rem',
             },
+            width: 'var(--dimension)',
+            height: 'var(--dimension)',
           },
         }}
         ref={topRightBoxRef}
@@ -146,11 +154,14 @@ export default function Layout() {
           <Box
             sx={{
               display: 'flex',
-              justifyContent: 'center',
               alignItems: 'center',
             }}
           >
-            <Typography variant="h6" component={'span'}>
+            <Typography
+              sx={{ userSelect: 'none' }}
+              variant="h6"
+              component={'span'}
+            >
               设置
             </Typography>
             <IconButton
@@ -189,6 +200,43 @@ export default function Layout() {
               </ToggleButton>
             </ToggleButtonGroup>
           </SectionFragment> */}
+          <SectionFragment title="默认操作">
+            <Box display="flex" flexDirection="column">
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!microphoneMuted}
+                    onChange={(_, v) => {
+                      dispatch(save({ microphoneMuted: !v }))
+                    }}
+                  />
+                }
+                label="入会开启麦克风"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={!cameraMuted}
+                    onChange={(_, v) => {
+                      dispatch(save({ cameraMuted: !v }))
+                    }}
+                  />
+                }
+                label="入会开启摄像头"
+              />
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={neverPrompt}
+                    onChange={(_, v) => {
+                      dispatch(save({ neverPrompt: v }))
+                    }}
+                  />
+                }
+                label="跳过入会时设备检查"
+              />
+            </Box>
+          </SectionFragment>
           <SectionFragment title="用户">
             <TextField
               label="修改userID"
@@ -221,10 +269,11 @@ export default function Layout() {
               value={true}
               selected={mirror}
               onChange={() => {
-                dispatch(toggleMirror(!mirror))
+                dispatch(update({ mirror: !mirror }))
               }}
             >
               <FlipRounded />
+              &nbsp;视频镜像翻转
             </ToggleButton>
 
             <TextField
@@ -232,12 +281,12 @@ export default function Layout() {
               fullWidth
               label="视频设备"
               variant="standard"
-              value={defaultCamera ?? 'default'}
+              value={defaultCamera}
+              disabled={!cameras.length}
               onChange={(evt) => {
                 dispatch(setDefaultCamera(evt.target.value))
               }}
             >
-              <MenuItem value="default">默认视频设备</MenuItem>
               {cameras.map((camInfo) => {
                 return (
                   <MenuItem key={camInfo.deviceId} value={camInfo.deviceId}>
@@ -254,7 +303,7 @@ export default function Layout() {
               value={cameraPreset}
               onChange={(evt) => {
                 if (isValidPreset(evt.target.value)) {
-                  dispatch(updateCameraPreset(evt.target.value))
+                  dispatch(update({ cameraPreset: evt.target.value }))
                 }
               }}
             >

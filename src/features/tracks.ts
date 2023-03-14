@@ -20,6 +20,8 @@ const refStore = {
     for (const id of ids) {
       if (id) {
         yield this.localTracks.get(id)
+      } else {
+        yield undefined
       }
     }
   },

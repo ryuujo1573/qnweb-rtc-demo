@@ -29,7 +29,7 @@ import {
   updateComposedConfig,
 } from '../features/streamSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { getRtmpUrl } from '../utils'
+import { getRtmpUrl } from '../api'
 import { ComposedConfigForm, DirectConfigForm } from './ConfigForm'
 
 export type StreamingControlProps = {
@@ -117,7 +117,7 @@ export function StreamingControl({ disabled, mobile }: StreamingControlProps) {
           in={on}
           // add "alwayShowDetailed"
         >
-          <Box height="50px">
+          <Box height="50px" mr={1}>
             <ToggleButtonGroup
               aria-label="livestreaming mode switch"
               value={showConfigPanel ? [liveMode, 'switch'] : [liveMode]}

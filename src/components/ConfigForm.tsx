@@ -35,7 +35,7 @@ import {
   useTheme,
 } from '@mui/material'
 import { QNRenderMode } from 'qnweb-rtc'
-import { Fragment, forwardRef, useState } from 'react'
+import { Fragment, forwardRef, useEffect, useState } from 'react'
 import { FieldError, get, useFieldArray, useForm } from 'react-hook-form'
 
 import { ComposedConfig, updateDirectConfig } from '../features/streamSlice'
@@ -211,6 +211,16 @@ export const ComposedConfigForm = forwardRef<
     control,
     name: 'transcodingTracks',
   })
+
+  useEffect(() => {
+    appendTrack(
+      allTracks.map((t) => {
+        return {
+          trackID: t.trackID!,
+        }
+      })
+    )
+  }, [])
 
   const {
     fields: watermarks,

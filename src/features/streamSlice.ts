@@ -179,10 +179,16 @@ export const streamSlice = createSlice({
           delete state.lastStreamId
         }
       })
+      .addCase(stopLive.rejected, (state, action) => {
+        const { replacing } = action.meta.arg
+        if (!replacing) {
+          state.liveState = 'idle'
+        }
+      })
       .addMatcher(
         (action) => action.type.includes('rejected'),
         (state, { error }) => {
-          console.error(error.message, '\n', error.stack ?? 'Unknown Error')
+          console.warn(error)
           state.liveState = 'idle'
         }
       )
