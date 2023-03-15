@@ -133,7 +133,6 @@ export default function SetupPage() {
           fullWidth
           variant="contained"
           type="submit"
-          color="secondary"
           onClick={() => {
             targetRef.current = 'live'
           }}

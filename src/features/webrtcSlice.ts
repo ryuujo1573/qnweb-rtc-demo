@@ -161,8 +161,7 @@ export const subscribe = createAsyncThunk(
       refStore.remoteTracks.set(track.trackID!, track)
     }
     return { trackIds: allTracks.map((t) => t.trackID!), userId }
-  },
-  {}
+  }
 )
 
 export const unsubscribe = createAsyncThunk(
@@ -247,7 +246,7 @@ const webrtcSlice = createSlice({
       function trackCleanup(trackId: string) {
         const track = refStore.localTracks.get(trackId)
         if (track) {
-          client.unpublish(track)
+          client.unpublish(track).catch(() => {})
           track.destroy()
           refStore.localTracks.delete(trackId)
         }

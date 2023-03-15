@@ -147,6 +147,7 @@ export default function RoomPage() {
         return () => {
           if (syncFlag.current == 'connected') {
             console.log('#leave')
+            dispatch(removeTrack())
             dispatch(leaveRoom())
           }
         }
@@ -199,9 +200,6 @@ export default function RoomPage() {
         console.log('#remove MIC')
         dispatch(removeTrack('microphone'))
       }
-    } else if (!isConnecting) {
-      // clean up if disconnected
-      dispatch(removeTrack())
     }
   }, [state, camMuted, micMuted])
 
