@@ -1,28 +1,14 @@
-import {
-  Avatar,
-  Box,
-  Button,
-  Collapse,
-  IconButton,
-  Link,
-  buttonClasses,
-  colors,
-  useTheme,
-} from '@mui/material'
-import { ChangeEvent, useRef, useState } from 'react'
+import { Box, Button, Link, buttonClasses, useTheme } from '@mui/material'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { decodeToken } from '../api'
 import { CustomTextField } from '../components'
 import { updateUserId, updateUserIdTemp } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
-import { changeColor, update } from '../features/settingSlice'
+import { update } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
-import { checkRoomId, checkUserId, useDebounce } from '../utils'
-import { decodeToken } from '../api'
-import Qiniu from '../qiniu.svg'
-import { useTopRightBox } from './layout'
-import { createPortal } from 'react-dom'
-import { CircleRounded } from '@mui/icons-material'
+import { checkRoomId, checkUserId } from '../utils'
 
 export default function SetupPage() {
   const theme = useTheme()
@@ -158,56 +144,8 @@ export default function SetupPage() {
     </form>
   )
 
-  const cornerBox = useTopRightBox()
-
   return (
     <>
-      {cornerBox.current &&
-        createPortal(
-          <Box display="flex">
-            <Collapse orientation="horizontal" in>
-              {(
-                [
-                  'red',
-                  'pink',
-                  'purple',
-                  'deepPurple',
-                  'indigo',
-                  'blue',
-                  'lightBlue',
-                  'cyan',
-                  'teal',
-                  'green',
-                  'lightGreen',
-                  'lime',
-                  'yellow',
-                  'amber',
-                  'orange',
-                  'deepOrange',
-                  'brown',
-                  'grey',
-                  'blueGrey',
-                ] as const satisfies readonly (keyof typeof colors)[]
-              ).map((name) => {
-                return (
-                  <IconButton
-                    key={name}
-                    onClick={() => {
-                      dispatch(changeColor(name))
-                    }}
-                  >
-                    <CircleRounded
-                      sx={{
-                        color: colors[name].A200,
-                      }}
-                    />
-                  </IconButton>
-                )
-              })}
-            </Collapse>
-          </Box>,
-          cornerBox.current
-        )}
       <Box
         component="main"
         sx={{
