@@ -9,11 +9,11 @@ import {
 import { memo, useEffect, useState } from 'react'
 
 import { client } from '../api'
-import refStore, { RemoteUser } from '../features/tracks'
 import { isAudioTrack, isVideoTrack, stringToColor } from '../utils'
 import AudioWave from './AudioWave'
 import NetworkIcon from './NetworkIcon'
 import VideoBox from './VideoBox'
+import { RemoteUser, refStore } from '../features/webrtcSlice'
 
 type UserBoxProps = {
   user: RemoteUser

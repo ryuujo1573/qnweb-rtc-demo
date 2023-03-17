@@ -55,12 +55,12 @@ import {
   updateComposedConfig,
   updateDirectConfig,
 } from '../features/streamSlice'
-import refStore from '../features/tracks'
 import { useAppDispatch, useAppSelector } from '../store'
 import { isAudioTrack, isVideoTrack, notNull, valuable } from '../utils'
 import { getRtmpUrl } from '../api'
 import { useParams } from 'react-router'
 import { useFormAction, useSubmit } from 'react-router-dom'
+import { refStore } from '../features/webrtcSlice'
 
 const Accordion = styled((props: AccordionProps) => (
   <MuiAccordion disableGutters elevation={0} {...props} />
@@ -738,7 +738,10 @@ export const ComposedConfigForm = forwardRef<
                           label="x轴坐标"
                           type="number"
                           {...setupField(
-                            `transcodingTracks.${index}.x` as const
+                            `transcodingTracks.${index}.x` as const,
+                            {
+                              valueAsNumber: true,
+                            }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.x}
                           // size="small"
@@ -749,7 +752,10 @@ export const ComposedConfigForm = forwardRef<
                           label="y轴坐标"
                           type="number"
                           {...setupField(
-                            `transcodingTracks.${index}.y` as const
+                            `transcodingTracks.${index}.y` as const,
+                            {
+                              valueAsNumber: true,
+                            }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.y}
                           // size="small"
@@ -760,7 +766,10 @@ export const ComposedConfigForm = forwardRef<
                           label="层级"
                           type="number"
                           {...setupField(
-                            `transcodingTracks.${index}.zOrder` as const
+                            `transcodingTracks.${index}.zOrder` as const,
+                            {
+                              valueAsNumber: true,
+                            }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.zOrder}
                           // size="small"
@@ -771,7 +780,10 @@ export const ComposedConfigForm = forwardRef<
                           label="宽"
                           type="number"
                           {...setupField(
-                            `transcodingTracks.${index}.width` as const
+                            `transcodingTracks.${index}.width` as const,
+                            {
+                              valueAsNumber: true,
+                            }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.width}
                           // size="small"
@@ -782,7 +794,10 @@ export const ComposedConfigForm = forwardRef<
                           label="高"
                           type="number"
                           {...setupField(
-                            `transcodingTracks.${index}.height` as const
+                            `transcodingTracks.${index}.height` as const,
+                            {
+                              valueAsNumber: true,
+                            }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.height}
                           // size="small"

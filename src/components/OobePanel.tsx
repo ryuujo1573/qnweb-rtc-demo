@@ -45,8 +45,6 @@ const OobePanel = memo(
       cameraMuted: defaultCamMuted,
     } = useAppSelector((s) => s.settings)
 
-    console.log('# oobe', [microphones, cameras])
-
     const [microphoneId, setMicrophoneId] = useState<string>('')
     const [cameraId, setCameraId] = useState<string>('')
 
@@ -84,6 +82,18 @@ const OobePanel = memo(
           microphoneId,
         }).then(setAudioTrack)
       }
+
+      return () => {
+        if (testing.audio) {
+          setAudioTrack((oldTrack) => {
+            oldTrack?.destroy()
+            return undefined
+          })
+        }
+      }
+    }, [testing.audio])
+
+    useEffect(() => {
       if (testing.video) {
         QNRTC.createCameraVideoTrack({
           cameraId,
@@ -93,13 +103,6 @@ const OobePanel = memo(
       }
 
       return () => {
-        if (testing.audio) {
-          // TODO: async await.
-          setAudioTrack((oldTrack) => {
-            oldTrack?.destroy()
-            return undefined
-          })
-        }
         if (testing.video) {
           setVideoTrack((oldTrack) => {
             oldTrack?.destroy()
@@ -107,7 +110,7 @@ const OobePanel = memo(
           })
         }
       }
-    }, [testing.audio, testing.video])
+    }, [testing.video])
 
     return (
       <Popover

@@ -135,6 +135,7 @@ export default function SetupPage() {
             fontSize: 16,
             padding: '14px',
             borderRadius: '114514px',
+            color: theme.palette.text.primary,
             my: 1,
             fontWeight: 700,
           },

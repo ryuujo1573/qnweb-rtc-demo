@@ -57,12 +57,13 @@ import {
   update,
 } from '../features/settingSlice'
 import { startLive, updateDirectConfig } from '../features/streamSlice'
-import refStore, { RemoteUser } from '../features/tracks'
 import {
+  RemoteUser,
   createTrack,
   joinRoom,
   leaveRoom,
   pinTrack,
+  refStore,
   removeTrack,
   unpinTrack,
 } from '../features/webrtcSlice'
@@ -269,7 +270,6 @@ export default function RoomPage() {
   // const screenBoxRef = useRef<HTMLDivElement>(null)
   const singleClickHandler = useThrottle(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      console.log('target:', e.target)
       let elem = e.target as HTMLElement
 
       // loop from the most inner to the current level
@@ -289,7 +289,7 @@ export default function RoomPage() {
     200
   )
 
-  console.log('# RoomPage render, track', camTrack)
+  // console.log('# RoomPage render, track', camTrack)
   Object.assign(window, { camTrack })
 
   return (

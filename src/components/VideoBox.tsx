@@ -38,7 +38,7 @@ const VideoBox = memo(
           } else {
             videoTrack.play(box, { mirror: false })
           }
-          console.log('# VideoBox play, element', videoTrack.mediaElement)
+
           if (videoTrack.mediaElement) {
             const pinCurrentTrack = () => {
               if (videoTrack) {
@@ -60,7 +60,7 @@ const VideoBox = memo(
             }
           }
         }
-      }, [boxRef.current, pinned])
+      }, [boxRef.current, pinned, videoTrack])
 
       return (
         <Box
@@ -76,9 +76,6 @@ const VideoBox = memo(
           }}
           bgcolor={'black'}
           display={pinned ? 'none' : 'flex'}
-          // onDoubleClick={() => {
-          //   console.log('# box dblclick')
-          // }}
           sx={{
             height: '100%',
             width: '100%',

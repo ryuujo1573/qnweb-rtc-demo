@@ -6,7 +6,7 @@ import {
 import { client } from '../api'
 import { ThunkAPI } from '../store'
 import { delay, getRandomId } from '../utils'
-import refStore from './tracks'
+import { refStore } from './webrtcSlice'
 
 type QStream = {
   liveMode: LiveMode
@@ -59,11 +59,20 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
       })
     } else if (liveMode == 'composed') {
       client.once('transcoding-livestreaming-state-changed', handler)
+      const { transcodingTracks, ...rest } = composedConfig
+      console.log('# composed', composedConfig)
       await client.startTranscodingLiveStreaming({
         url,
         streamID,
-        ...composedConfig,
+        ...rest,
       })
+      console.log("# here i'm not stuck!")
+      if (transcodingTracks) {
+        await client.setTranscodingLiveStreamingTracks(
+          streamID,
+          transcodingTracks
+        )
+      }
     }
 
     // return rejectWithValue('live state is not idle.')
