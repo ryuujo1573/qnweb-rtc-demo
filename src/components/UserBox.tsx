@@ -6,7 +6,7 @@ import {
   svgIconClasses,
   useTheme,
 } from '@mui/material'
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 
 import { client } from '../api'
 import refStore, { RemoteUser } from '../features/tracks'
@@ -19,7 +19,7 @@ type UserBoxProps = {
   user: RemoteUser
 } & (typeof Box extends (props: infer Props) => any ? Props : never)
 
-export default function UserBox({ user, sx }: UserBoxProps) {
+const UserBox = memo(({ user, sx }: UserBoxProps) => {
   const userTracks = refStore.queryRemoteTracks(user.trackIds)
   const videoTracks = userTracks.filter(isVideoTrack)
   const audioTracks = userTracks.filter(isAudioTrack)
@@ -153,4 +153,6 @@ export default function UserBox({ user, sx }: UserBoxProps) {
         : []}
     </Box>
   )
-}
+})
+
+export default UserBox

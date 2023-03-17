@@ -1,23 +1,13 @@
 import {
-  ArrowForwardIosRounded,
-  ArrowForwardRounded,
-  ArrowRightRounded,
-} from '@mui/icons-material'
-import {
   alpha,
-  IconButton,
   iconButtonClasses,
-  InputAdornment,
   InputBase,
   inputBaseClasses,
   InputBaseProps,
   styled,
-  svgIconClasses,
-  Theme,
 } from '@mui/material'
+import { Theme } from '@mui/material/styles'
 import { MUIStyledCommonProps } from '@mui/system/createStyled'
-import { ChangeEvent, useState } from 'react'
-import { useDebounce } from '../utils'
 
 const StyledInputBase = styled(InputBase)(({ theme }) => ({
   width: '300px',
@@ -29,18 +19,6 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   fontSize: 16,
   padding: 'var(--innerHeight) calc(.5rem + var(--innerHeight))',
   // Use the system font instead of the default Roboto font.
-  fontFamily: [
-    '-apple-system',
-    'BlinkMacSystemFont',
-    '"Segoe UI"',
-    'Roboto',
-    '"Helvetica Neue"',
-    'Arial',
-    'sans-serif',
-    '"Apple Color Emoji"',
-    '"Segoe UI Emoji"',
-    '"Segoe UI Symbol"',
-  ].join(','),
   [`& > .${inputBaseClasses.input}`]: {
     height: '1rem',
     // '& ~ div': {

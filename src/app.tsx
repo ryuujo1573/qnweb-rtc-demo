@@ -1,17 +1,16 @@
 import {
   Alert,
-  createTheme,
   CssBaseline,
   PaletteOptions,
   Snackbar,
   ThemeProvider,
 } from '@mui/material'
-import { blue, grey, lightBlue, teal } from '@mui/material/colors'
+import { createTheme } from '@mui/material/styles'
+import * as colors from '@mui/material/colors'
 import { FC, useEffect, useMemo, useState } from 'react'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 
 import { reset } from './features/messageSlice'
-import { selectTheme } from './features/settingSlice'
 import { ErrorPage, Layout, LiveRoomPage, RoomPage, SetupPage } from './pages'
 import { useAppDispatch, useAppSelector } from './store'
 
@@ -44,48 +43,45 @@ const router = createHashRouter(
 
 export const App: FC = () => {
   // theme / darkmode
-  const [isDarkmode, toggleDarkmode] = useState(false)
-  const themeCode = useAppSelector(selectTheme)
+  const { themeCode, primaryColor } = useAppSelector((s) => s.settings)
+  const [darkmode, toggleDarkmode] = useState(themeCode == 'dark')
   const dispatch = useAppDispatch()
+  const { grey } = colors
 
-  const darkModePalette: PaletteOptions = {
-    mode: 'dark',
-    primary: blue,
-    secondary: teal,
-    text: {
-      primary: grey[300],
-      secondary: grey[500],
-    },
-    background: {
-      default: grey[900],
-      paper: grey[800],
-    },
-  }
-
-  const lightModePalette: PaletteOptions = {
-    mode: 'light',
-    primary: lightBlue,
-    secondary: teal,
-    text: {
-      primary: grey[900],
-      secondary: grey[800],
-    },
-    background: {
-      default: grey[50],
-      paper: grey[100],
-    },
-  }
-
-  const theme = useMemo(
-    () =>
-      createTheme({
-        palette: isDarkmode ? darkModePalette : lightModePalette,
-        shape: {
-          borderRadius: 20,
-        },
-      }),
-    [isDarkmode]
-  )
+  const theme = useMemo(() => {
+    return createTheme({
+      palette: darkmode
+        ? {
+            mode: 'dark',
+            primary: colors[primaryColor],
+            // secondary: colors.teal,
+            text: {
+              primary: grey[300],
+              secondary: grey[500],
+            },
+            background: {
+              default: grey[900],
+              paper: grey[800],
+            },
+          }
+        : {
+            mode: 'light',
+            primary: colors[primaryColor],
+            // secondary: colors.teal,
+            text: {
+              primary: grey[900],
+              secondary: grey[800],
+            },
+            background: {
+              default: grey[50],
+              paper: grey[100],
+            },
+          },
+      shape: {
+        borderRadius: 20,
+      },
+    })
+  }, [darkmode, primaryColor])
 
   useEffect(() => {
     if (themeCode == 'auto') {
@@ -97,8 +93,6 @@ export const App: FC = () => {
         toggleDarkmode(ev.matches)
       }
       mq.addEventListener('change', onPreferredModeChanged)
-
-      // // remove listener when themeCode is no longer 'auto'
       return () => mq.removeEventListener('change', onPreferredModeChanged)
     } else {
       toggleDarkmode(themeCode == 'dark')

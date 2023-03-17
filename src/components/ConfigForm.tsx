@@ -3,6 +3,14 @@ import {
   AudiotrackRounded,
   CheckRounded,
   ExpandMoreRounded,
+  HideSourceRounded,
+  LiveTvRounded,
+  SaveAltRounded,
+  SaveOutlined,
+  SaveRounded,
+  StopCircleOutlined,
+  StopCircleRounded,
+  StopRounded,
   VideocamRounded,
 } from '@mui/icons-material'
 import {
@@ -29,19 +37,30 @@ import {
   TextField,
   Tooltip,
   Typography,
+  accordionDetailsClasses,
   gridClasses,
   styled,
   svgIconClasses,
   useTheme,
 } from '@mui/material'
-import { QNRenderMode } from 'qnweb-rtc'
-import { Fragment, forwardRef, useEffect, useState } from 'react'
+import { QNLiveStreamingState as QLiveState, QNRenderMode } from 'qnweb-rtc'
+import { Fragment, forwardRef, useEffect, useRef, useState } from 'react'
 import { FieldError, get, useFieldArray, useForm } from 'react-hook-form'
 
-import { ComposedConfig, updateDirectConfig } from '../features/streamSlice'
+import {
+  ComposedConfig,
+  changeMode,
+  startLive,
+  stopLive,
+  updateComposedConfig,
+  updateDirectConfig,
+} from '../features/streamSlice'
 import refStore from '../features/tracks'
 import { useAppDispatch, useAppSelector } from '../store'
-import { isAudioTrack, isVideoTrack } from '../utils'
+import { isAudioTrack, isVideoTrack, notNull, valuable } from '../utils'
+import { getRtmpUrl } from '../api'
+import { useParams } from 'react-router'
+import { useFormAction, useSubmit } from 'react-router-dom'
 
 const Accordion = styled((props: AccordionProps) => (
   <MuiAccordion disableGutters elevation={0} {...props} />
@@ -65,7 +84,7 @@ const AccordionSummary = styled((props: AccordionSummaryProps) => (
   position: 'sticky',
   top: 0,
   zIndex: 2,
-  background: theme.palette.mode === 'dark' ? 'hsl(0,0%,26%)' : 'hsl(0,0%,80%)',
+  background: theme.palette.mode === 'dark' ? 'hsl(0,0%,35%)' : 'hsl(0,0%,80%)',
   flexDirection: 'row-reverse',
   '& .MuiAccordionSummary-expandIconWrapper.Mui-expanded': {
     transform: 'rotate(180deg)',
@@ -82,12 +101,20 @@ const AccordionDetails = styled(MuiAccordionDetails)(({ theme }) => ({
     theme.palette.mode === 'dark' ? 'hsl(0,0%,20%)' : 'hsl(0,0%,85%)',
 }))
 
-export const DirectConfigForm = forwardRef<HTMLDivElement>((_, ref) => {
-  const config = useAppSelector((s) => s.stream).directConfig
+export const DirectConfigPanel = forwardRef<HTMLDivElement>((_, ref) => {
+  const config = useAppSelector((s) => s.stream.directConfig)
   const dispatch = useAppDispatch()
-  const { allTracks } = refStore
-  const videoTracks = allTracks.filter(isVideoTrack)
-  const audioTracks = allTracks.filter(isAudioTrack)
+
+  const { camera, microphone, screenVideo, screenAudio } = useAppSelector(
+    (s) => s.webrtc.localTrack
+  )
+
+  const localTracks = Array.from(
+    refStore.matchLocalTracks(camera, microphone, screenVideo, screenAudio)
+  )
+  const [cameraTrack, microphoneTrack, screenVideoTrack, screenAudioTrack] =
+    localTracks
+
   const handleVideoTrackClick = (videoTrackId: string) => () => {
     dispatch(
       updateDirectConfig({
@@ -106,10 +133,13 @@ export const DirectConfigForm = forwardRef<HTMLDivElement>((_, ref) => {
     )
   }
 
+  const videoTracks = localTracks.filter(isVideoTrack)
+  const audioTracks = localTracks.filter(isAudioTrack)
+
   return (
     <Box ref={ref}>
       <List dense disablePadding>
-        {videoTracks.length == 0 && audioTracks.length == 0 && (
+        {localTracks.every((t) => t == undefined) && (
           <Typography
             display="table"
             mx="auto"
@@ -172,16 +202,23 @@ type FormProps<T = {}> = {
 }
 
 export const ComposedConfigForm = forwardRef<
-  HTMLDivElement,
+  HTMLFormElement,
   FormProps<ComposedConfig>
 >(({ onValidSubmit }, ref) => {
   //#region variables
   const theme = useTheme()
   const dispatch = useAppDispatch()
   const { composedConfig } = useAppSelector((s) => s.stream)
+
+  const { roomId } = useParams()
+  if (!roomId) {
+    return <></>
+  }
+
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isValid },
     control,
   } = useForm({
@@ -223,10 +260,14 @@ export const ComposedConfigForm = forwardRef<
   })
 
   const { allTracks } = refStore
-  const videoTracks = allTracks.filter(isVideoTrack)
-  const audioTracks = allTracks.filter(isAudioTrack)
 
-  const { composedConfig: config } = useAppSelector((s) => s.stream)
+  const {
+    composedConfig: config,
+    liveState,
+    liveMode,
+    lastLiveMode,
+    lastStreamId,
+  } = useAppSelector((s) => s.stream)
 
   const [editing, setEditing] = useState(false)
   const [pendingNewTrackId, setNewTrackId] = useState('')
@@ -238,11 +279,25 @@ export const ComposedConfigForm = forwardRef<
     })
   }
 
+  const online = liveState == 'connected'
+  const offline = liveState == 'idle'
+  const pending = liveState == 'processing'
   //#endregion
+
+  const formRef = useRef<HTMLFormElement>()
 
   return (
     <Box
-      ref={ref}
+      ref={(form: HTMLFormElement) => {
+        if (ref) {
+          if (typeof ref == 'function') {
+            ref(form)
+          } else {
+            ref.current = form
+          }
+        }
+        formRef.current = form
+      }}
       component="form"
       display="flex"
       flexDirection="column"
@@ -255,17 +310,20 @@ export const ComposedConfigForm = forwardRef<
           flex: 1,
         }}
       >
-        <Accordion expanded={nstExpanded[0]} onChange={handleExpand(0)}>
-          <AccordionSummary aria-controls="settings-1">
+        <MuiAccordion expanded={nstExpanded[0]} onChange={handleExpand(0)}>
+          <MuiAccordionSummary
+            aria-controls="settings-1"
+            expandIcon={<ExpandMoreRounded />}
+          >
             推流设置
-          </AccordionSummary>
-          <AccordionDetails>
+          </MuiAccordionSummary>
+          <MuiAccordionDetails>
             <Grid
               container
               alignItems="center"
               // spacing={1}
               sx={{
-                px: 2,
+                // px: 2,
                 py: 2,
                 gap: 2,
                 width: 'fit-content',
@@ -520,14 +578,23 @@ export const ComposedConfigForm = forwardRef<
                 </Fragment>
               ))}
             </Grid>
-          </AccordionDetails>
-        </Accordion>
-        <Accordion expanded={nstExpanded[1]} onChange={handleExpand(1)}>
-          <AccordionSummary aria-controls="settings-2">
+          </MuiAccordionDetails>
+        </MuiAccordion>
+        <MuiAccordion expanded={nstExpanded[1]} onChange={handleExpand(1)}>
+          <MuiAccordionSummary
+            aria-controls="settings-2"
+            expandIcon={<ExpandMoreRounded />}
+          >
             合成设置{' '}
             {transcodingTracks.length ? `(${transcodingTracks.length})` : ''}
-          </AccordionSummary>
-          <AccordionDetails>
+          </MuiAccordionSummary>
+          <MuiAccordionDetails
+            sx={{
+              // [`.${accordionDetailsClasses.root}`]: {
+              paddingInline: 0,
+              // },
+            }}
+          >
             {!allTracks.length ? (
               <Typography
                 display="table"
@@ -597,8 +664,8 @@ export const ComposedConfigForm = forwardRef<
             {transcodingTracks.map((trackConfig, index) => {
               const trackID = trackConfig.trackID
               const track =
-                refStore.localTracks.get(trackID) ??
-                refStore.remoteTracks.get(trackID)
+                refStore.localTracksMap.get(trackID) ??
+                refStore.remoteTracksMap.get(trackID)
               if (!track) {
                 removeTrack(index)
                 return <></>
@@ -674,7 +741,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.x` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.x}
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -685,7 +752,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.y` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.y}
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -696,7 +763,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.zOrder` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.zOrder}
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -707,7 +774,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.width` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.width}
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -718,7 +785,7 @@ export const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.height` as const
                           )}
                           error={!!errors.transcodingTracks?.[index]?.height}
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         />
@@ -731,7 +798,7 @@ export const ComposedConfigForm = forwardRef<
                           error={
                             !!errors.transcodingTracks?.[index]?.renderMode
                           }
-                          size="small"
+                          // size="small"
                           fullWidth
                           variant="outlined"
                         >
@@ -747,26 +814,57 @@ export const ComposedConfigForm = forwardRef<
                 </Fragment>
               )
             })}
-          </AccordionDetails>
-        </Accordion>
+          </MuiAccordionDetails>
+        </MuiAccordion>
       </Box>
-      <Button
-        variant="contained"
-        startIcon={<CheckRounded />}
-        sx={{ m: 1, position: 'relative', bottom: 0 }}
-        type="submit"
-        // disabled={!isValid}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          m: 2,
+          mb: 4,
+          gap: 2,
+        }}
       >
-        确认
-      </Button>
-      {/* <Button
-        variant="outlined"
-        disabled
-        startIcon={<RestartAltRounded />}
-        // WIP
-      >
-        重置
-      </Button> */}
+        <Button
+          variant="outlined"
+          fullWidth
+          size="large"
+          color="info"
+          startIcon={<SaveRounded />}
+          type="submit"
+          // disabled={!isValid}
+        >
+          保存设置
+        </Button>
+        <Button
+          variant="contained"
+          fullWidth
+          size="large"
+          color={online ? 'error' : 'primary'}
+          startIcon={online ? <HideSourceRounded /> : <CheckRounded />}
+          onClick={(e) => {
+            if (online && lastLiveMode == 'composed') {
+              // 结束合流
+              dispatch(
+                stopLive({
+                  streamID: lastStreamId!,
+                  liveMode: lastLiveMode!,
+                })
+              )
+            } else {
+              // 保存并推流
+              dispatch(updateComposedConfig(getValues()))
+              if (liveMode == 'direct') {
+                dispatch(changeMode())
+              }
+              dispatch(startLive(getRtmpUrl(roomId, Date.now())))
+            }
+          }}
+        >
+          {online && lastLiveMode == 'composed' ? '结束合流' : '保存并推流'}
+        </Button>
+      </Box>
     </Box>
   )
 })

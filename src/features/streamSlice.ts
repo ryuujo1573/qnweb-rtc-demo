@@ -27,10 +27,10 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
     } = getState().stream
 
     const videoTrack = directConfig.videoTrackId
-      ? refStore.localTracks.get(directConfig.videoTrackId)
+      ? refStore.localTracksMap.get(directConfig.videoTrackId)
       : undefined
     const audioTrack = directConfig.audioTrackId
-      ? refStore.localTracks.get(directConfig.audioTrackId)
+      ? refStore.localTracksMap.get(directConfig.audioTrackId)
       : undefined
 
     const streamID = getRandomId()
@@ -104,7 +104,6 @@ export type DirectConfig = {
 export type StreamState = {
   liveState: LiveState
   liveMode: LiveMode
-  serialNum: number
   lastLiveMode?: LiveMode
   lastStreamId?: string
   directConfig: DirectConfig
@@ -114,7 +113,6 @@ export type StreamState = {
 const initialState: StreamState = {
   liveState: 'idle',
   liveMode: 'direct',
-  serialNum: 0,
   lastLiveMode: undefined,
   lastStreamId: undefined,
   directConfig: {},

@@ -10,16 +10,22 @@ import { TabContext, TabList, TabPanel } from '@mui/lab'
 import {
   Box,
   Fade,
+  FormHelperText,
+  FormLabel,
   Grow,
   IconButton,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
   Paper,
   SwipeableDrawer,
   Tab,
   ToggleButton,
   ToggleButtonGroup,
+  formHelperTextClasses,
   paperClasses,
 } from '@mui/material'
-import { useState } from 'react'
+import { ReactEventHandler, SyntheticEvent, memo, useState } from 'react'
 import { useParams } from 'react-router'
 
 import {
@@ -30,14 +36,14 @@ import {
 } from '../features/streamSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { getRtmpUrl } from '../api'
-import { ComposedConfigForm, DirectConfigForm } from './ConfigForm'
+import { ComposedConfigForm } from './ConfigForm'
+import { QNConnectionState as QState } from 'qnweb-rtc'
+import { isMobile } from '../utils'
+import { useTopRightBox } from '../pages/layout'
+import { createPortal } from 'react-dom'
 
-export type StreamingControlProps = {
-  disabled: boolean
-  mobile?: boolean
-}
-
-export function StreamingControl({ disabled, mobile }: StreamingControlProps) {
+const StreamingControl = memo(() => {
+  const boxRef = useTopRightBox()
   const { roomId } = useParams()
   if (!roomId) {
     return <></>
@@ -47,28 +53,20 @@ export function StreamingControl({ disabled, mobile }: StreamingControlProps) {
   const { liveState, liveMode, lastLiveMode, lastStreamId } = useAppSelector(
     (s) => s.stream
   )
+  const { connectionState: state } = useAppSelector((s) => s.webrtc)
+  const disabled = state != QState.CONNECTED && state != QState.RECONNECTED
+  const mobile = isMobile()
+
   const dispatch = useAppDispatch()
 
   const on = liveState == 'connected'
   const pending = liveState == 'processing'
 
-  const handleModeChange = (evt: any, mode: string) => {
-    function isValidMode(mode: string): mode is 'direct' | 'composed' {
-      return ['direct', 'composed'].includes(mode)
-    }
-    if (isValidMode(mode) && !pending && mode != liveMode) {
-      dispatch(changeMode())
-      setTabValue(mode)
-      if (on) {
-        dispatch(startLive(getUrl()))
-      }
-    } else if (mode == 'switch') {
-      setShowConfigPanel((v) => !v)
-    }
-  }
-
   const handleLiveToggle = () => {
     if (liveState == 'idle') {
+      if (liveMode == 'composed') {
+        dispatch(changeMode())
+      }
       dispatch(startLive(getUrl()))
     } else if (on) {
       dispatch(
@@ -80,181 +78,123 @@ export function StreamingControl({ disabled, mobile }: StreamingControlProps) {
     }
   }
 
-  const [tabValue, setTabValue] = useState(liveMode.slice())
   const [showConfigPanel, setShowConfigPanel] = useState(false)
 
-  return (
-    <>
-      <IconButton
-        disabled={disabled || pending}
-        color={on ? 'error' : 'primary'}
-        // loading={liveState.phase == 'pending'}
-        onClick={handleLiveToggle}
-      >
-        {on ? (
-          <>
-            <StopRounded />
-            结束推流
-          </>
-        ) : (
-          <>
-            <LiveTvRounded />
-            开启推流
-          </>
-        )}
-      </IconButton>
-      {mobile ? (
+  return boxRef.current ? (
+    createPortal(
+      <>
         <IconButton
-          onClick={() => {
-            setShowConfigPanel(true)
-          }}
+          disabled={disabled || pending}
+          color={on && lastLiveMode == 'direct' ? 'error' : 'inherit'}
+          // loading={liveState.phase == 'pending'}
+          onClick={handleLiveToggle}
         >
-          <VideoSettingsRounded fontSize="large" />
-          推流面板
-        </IconButton>
-      ) : (
-        <Fade
-          in={on}
-          // add "alwayShowDetailed"
-        >
-          <Box height="50px" mr={1}>
-            <ToggleButtonGroup
-              aria-label="livestreaming mode switch"
-              value={showConfigPanel ? [liveMode, 'switch'] : [liveMode]}
-              exclusive
-              color="primary"
-              onChange={handleModeChange}
-            >
-              <ToggleButton value="direct" aria-label="direct relay">
-                <StreamRounded />
-                单路转推
-              </ToggleButton>
-              <ToggleButton value="composed" aria-label="composed relay">
-                <LayersRounded />
-                合流转推
-              </ToggleButton>
-              <ToggleButton value="switch">
-                <ExpandMoreRounded />
-              </ToggleButton>
-            </ToggleButtonGroup>
-            <Grow in={showConfigPanel}>
-              <Paper
-                sx={{
-                  position: 'absolute',
-                  // padding: 2,
-                  top: 'calc(100% + 1rem)',
-                  left: 0,
-                  [`& .MuiTabPanel-root`]: {
-                    padding: 0,
-                    maxWidth: '300px',
-                    borderRadius: 'inherit',
-                  },
-                  [`& > button`]: {
-                    margin: 20,
-                    maxWidth: '300px',
-                  },
-                }}
-              >
-                <TabContext
-                  value={tabValue == 'direct' ? 'direct' : 'composed'}
-                >
-                  <TabList
-                    onChange={(_, newTabValue) => {
-                      setTabValue(newTabValue)
-                    }}
-                    aria-label="stream mode config"
-                  >
-                    <Tab label="单路转推" value="direct" />
-                    <Tab label="合流转推" value="composed" />
-                  </TabList>
-                  <TabPanel value="direct">
-                    <DirectConfigForm />
-                  </TabPanel>
-                  <TabPanel value="composed">
-                    <ComposedConfigForm
-                      onValidSubmit={(data) => {
-                        dispatch(updateComposedConfig(data))
-                        dispatch(startLive(getUrl()))
-                        setShowConfigPanel(false)
-                      }}
-                    />
-                  </TabPanel>
-                </TabContext>
-              </Paper>
-            </Grow>
-          </Box>
-        </Fade>
-      )}
-      {mobile && (
-        <SwipeableDrawer
-          container={document.body}
-          anchor="bottom"
-          open={showConfigPanel}
-          onClick={(e) => e.stopPropagation()}
-          onClose={() => {
-            setShowConfigPanel(false)
-          }}
-          onOpen={() => {
-            setShowConfigPanel(true)
-          }}
-          disableSwipeToOpen
-          elevation={12}
-          sx={{
-            zIndex: 114514,
-            [`& > .${paperClasses.root}`]: {
-              position: 'fixed',
-              left: 0,
-              right: 0,
-              mx: 1,
-              borderStartStartRadius: '1rem',
-              borderStartEndRadius: '1rem',
-              height: 'fit-content',
-              px: '5%',
-              display: 'flex',
-              flexDirection: 'column',
-            },
-          }}
-        >
-          <Box
-            sx={{
-              width: 30,
-              height: 6,
-              margin: '0.5rem auto',
-              backgroundColor: 'grey',
-              backgroundBlendMode: 'color-dodge',
-              borderRadius: 1,
-            }}
-          />
-          <ToggleButtonGroup
-            aria-label="livestreaming mode switch"
-            value={tabValue}
-            exclusive
-            color="primary"
-            fullWidth
-            onChange={handleModeChange}
-          >
-            <ToggleButton value="direct" aria-label="direct relay">
+          {on && lastLiveMode == 'direct' ? (
+            <>
+              <StopRounded />
+              结束推流
+            </>
+          ) : (
+            <>
               <StreamRounded />
               单路转推
-            </ToggleButton>
-            <ToggleButton value="composed" aria-label="composed relay">
-              <LayersRounded />
-              合流转推
-            </ToggleButton>
-          </ToggleButtonGroup>
-          {tabValue == 'direct' ? (
-            <DirectConfigForm />
-          ) : (
+            </>
+          )}
+        </IconButton>
+        <IconButton
+          disabled={disabled || pending}
+          color={on && lastLiveMode == 'composed' ? 'primary' : 'inherit'}
+          onClick={() => {
+            setShowConfigPanel((p) => !p)
+          }}
+        >
+          <LayersRounded fontSize="large" />
+          合流转推
+        </IconButton>
+        {mobile ? (
+          <SwipeableDrawer
+            container={document.body}
+            anchor="bottom"
+            open={showConfigPanel}
+            onClick={(e) => e.stopPropagation()}
+            onClose={() => {
+              setShowConfigPanel(false)
+            }}
+            onOpen={() => {
+              setShowConfigPanel(true)
+            }}
+            disableSwipeToOpen
+            elevation={12}
+            sx={{
+              [`& > .${paperClasses.root}`]: {
+                position: 'fixed',
+                left: 0,
+                right: 0,
+                marginInline: 1,
+                borderStartStartRadius: '1rem',
+                borderStartEndRadius: '1rem',
+                height: 'fit-content',
+                // paddingInline: '5%',
+                display: 'flex',
+                flexDirection: 'column',
+                [`& > *:nth-child(2)`]: {
+                  margin: '.5rem auto',
+                },
+              },
+            }}
+          >
+            <Box
+              sx={{
+                width: 30,
+                height: 6,
+                margin: '0.5rem auto',
+                backgroundColor: 'grey',
+                backgroundBlendMode: 'color-dodge',
+                borderRadius: 1,
+              }}
+            />
+            <FormLabel>合流设置</FormLabel>
             <ComposedConfigForm
               onValidSubmit={(data) => {
                 dispatch(updateComposedConfig(data))
-                dispatch(startLive(getUrl()))
+                if (liveState == 'connected') {
+                  dispatch(startLive(getUrl()))
+                }
                 setShowConfigPanel(false)
               }}
             />
-          )}
-        </SwipeableDrawer>
-      )}
-    </>
+          </SwipeableDrawer>
+        ) : (
+          <Grow in={showConfigPanel}>
+            <Paper
+              sx={{
+                display: showConfigPanel ? 'unset' : 'none',
+                position: 'absolute',
+                // padding: 2,
+                top: 'calc(100% + 1rem)',
+                right: 0,
+                transform: 'translate(-100%, 0)',
+                width: '320px',
+              }}
+            >
+              <ComposedConfigForm
+                onValidSubmit={(data) => {
+                  dispatch(updateComposedConfig(data))
+                  if (on) {
+                    dispatch(startLive(getUrl()))
+                  }
+                  setShowConfigPanel(false)
+                }}
+              />
+            </Paper>
+          </Grow>
+        )}
+      </>,
+      boxRef.current
+    )
+  ) : (
+    <></>
   )
-}
+})
+
+export default StreamingControl

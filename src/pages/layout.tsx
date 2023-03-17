@@ -111,7 +111,6 @@ export default function Layout() {
           alignItems: 'center',
           justifyContent: 'center',
           m: 1,
-          // gap: 1,
           [`& > .${buttonBaseClasses.root}`]: {
             '--dimension': '4.5rem',
             '--padding': '.2rem',
@@ -146,9 +145,10 @@ export default function Layout() {
           onOpen={toggleDrawerHandler('on')}
           sx={{
             [`& .${paperClasses.root}`]: {
-              maxWidth: mobile ? '100%' : '360px',
+              width: mobile ? '100%' : '360px',
               gap: 2,
               padding: 2,
+              overflowY: 'scroll',
             },
           }}
         >
@@ -236,7 +236,7 @@ export default function Layout() {
                 }
                 label="跳过入会时设备检查"
               />
-              
+
               <FormControlLabel
                 control={
                   <Checkbox
@@ -248,7 +248,6 @@ export default function Layout() {
                 }
                 label="显示媒体详细信息"
               />
-
             </Box>
           </SectionFragment>
           <SectionFragment title="用户">

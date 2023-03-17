@@ -56,6 +56,10 @@ export function notNull<T>(t: T): t is Exclude<T, null> {
   return t !== null
 }
 
+export function valuable<T>(t: T): t is Exclude<T, null | undefined> {
+  return t !== null && t !== undefined
+}
+
 export function isMobile() {
   return window.innerWidth < 500 || /mobile|phone/i.test(navigator.userAgent)
 }

@@ -1,12 +1,5 @@
-import { QNLocalAudioTrack, QNRemoteAudioTrack, QNTrack } from 'qnweb-rtc'
-import React, {
-  CSSProperties,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
+import { QNLocalAudioTrack, QNRemoteAudioTrack } from 'qnweb-rtc'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 
 export type AudioWaveProps = {
   track: QNLocalAudioTrack | QNRemoteAudioTrack
@@ -15,7 +8,7 @@ export type AudioWaveProps = {
   HTMLCanvasElement
 >
 
-export default function AudioWave({ track, ...canvasProps }: AudioWaveProps) {
+const AudioWave = memo(({ track, ...canvasProps }: AudioWaveProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [context, setContext] = useState<CanvasRenderingContext2D>()
   // note: this defaults to set dimensions as positioning parent
@@ -26,8 +19,6 @@ export default function AudioWave({ track, ...canvasProps }: AudioWaveProps) {
     if (!context) return
     const color = 'lightblue'
     const [width, height] = size!
-
-    console.count('frame')
 
     // 时域/频域
     const timeData = track.getCurrentTimeDomainData()
@@ -71,4 +62,6 @@ export default function AudioWave({ track, ...canvasProps }: AudioWaveProps) {
   }, [canvasRef.current])
 
   return <canvas ref={canvasRef} {...canvasProps} />
-}
+})
+
+export default AudioWave

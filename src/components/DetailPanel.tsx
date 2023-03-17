@@ -15,18 +15,10 @@ import {
   QNTrack,
   QNConnectionState as QState,
 } from 'qnweb-rtc'
-import {
-  Fragment,
-  // useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
 import { client } from '../api'
-// import { StageContext } from '../pages/room'
 
 export type DetailPanelProps = {
   tracks: (QNTrack | undefined)[]
@@ -44,7 +36,6 @@ const stateText = {
 export default function DetailPanel({ tracks }: DetailPanelProps) {
   const { roomId } = useParams()
   const theme = useTheme()
-  // const { track: pinnedTrack } = useContext(StageContext)
 
   const [state, setState] = useState<QState>(QState.DISCONNECTED)
   useEffect(() => {
@@ -81,8 +72,6 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     [tracks]
   )
 
-  const refreshInterval = 500
-
   const [audioStats, setAudioStats] =
     useState<[string, QNLocalAudioTrackStats][]>()
   const [videoStats, setVideoStats] =
@@ -101,9 +90,11 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
     }
   }
 
-  const autoRefresh =
-    (state == QState.CONNECTED || state == QState.RECONNECTED) &&
-    tracks.length > 0
+  const refreshInterval = 1000
+  const connected = state == QState.CONNECTED || state == QState.RECONNECTED
+
+  const autoRefresh = connected && tracks.length > 0
+
   useEffect(() => {
     if (autoRefresh) {
       const id = setInterval(refresh, refreshInterval)

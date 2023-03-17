@@ -1,19 +1,33 @@
-import { Box, Button, Link, buttonClasses, useTheme } from '@mui/material'
+import {
+  Avatar,
+  Box,
+  Button,
+  Collapse,
+  IconButton,
+  Link,
+  buttonClasses,
+  colors,
+  useTheme,
+} from '@mui/material'
 import { ChangeEvent, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { CustomTextField } from '../components'
 import { updateUserId, updateUserIdTemp } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
-import { update } from '../features/settingSlice'
+import { changeColor, update } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkRoomId, checkUserId, useDebounce } from '../utils'
 import { decodeToken } from '../api'
 import Qiniu from '../qiniu.svg'
+import { useTopRightBox } from './layout'
+import { createPortal } from 'react-dom'
+import { CircleRounded } from '@mui/icons-material'
 
 export default function SetupPage() {
   const theme = useTheme()
   const { userId } = useAppSelector((s) => s.identity)
+  const { primaryColor } = useAppSelector((s) => s.settings)
   const dispatch = useAppDispatch()
 
   const [connectById, setConnectById] = useState(true)
@@ -143,8 +157,56 @@ export default function SetupPage() {
     </form>
   )
 
+  const cornerBox = useTopRightBox()
+
   return (
     <>
+      {cornerBox.current &&
+        createPortal(
+          <Box display="flex">
+            <Collapse orientation="horizontal" in>
+              {(
+                [
+                  'red',
+                  'pink',
+                  'purple',
+                  'deepPurple',
+                  'indigo',
+                  'blue',
+                  'lightBlue',
+                  'cyan',
+                  'teal',
+                  'green',
+                  'lightGreen',
+                  'lime',
+                  'yellow',
+                  'amber',
+                  'orange',
+                  'deepOrange',
+                  'brown',
+                  'grey',
+                  'blueGrey',
+                ] as const satisfies readonly (keyof typeof colors)[]
+              ).map((name) => {
+                return (
+                  <IconButton
+                    key={name}
+                    onClick={() => {
+                      dispatch(changeColor(name))
+                    }}
+                  >
+                    <CircleRounded
+                      sx={{
+                        color: colors[name].A200,
+                      }}
+                    />
+                  </IconButton>
+                )
+              })}
+            </Collapse>
+          </Box>,
+          cornerBox.current
+        )}
       <Box
         component="main"
         sx={{
@@ -152,10 +214,18 @@ export default function SetupPage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          flex: '1',
+          height: '100%',
         }}
       >
-        <img src={Qiniu} alt="logo" width={300} className="logo" />
+        <Box
+          sx={{
+            width: '300px',
+            height: '85px',
+            bgcolor: theme.palette.primary.main,
+            WebkitMaskImage: 'url(src/qiniu.svg)',
+          }}
+          className="logo"
+        />
 
         {!userId ? step1() : step2()}
       </Box>

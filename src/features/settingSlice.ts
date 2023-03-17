@@ -13,8 +13,11 @@ export function isValidPreset(str: string): str is Preset {
   return Object.keys(SUPPORT_VIDEO_ENCODER_CONFIG_LIST).includes(str)
 }
 
+type PrimaryColors = Omit<typeof import('@mui/material/colors'), 'common'>
+
 export interface Settings {
   themeCode: ThemeCode
+  primaryColor: keyof PrimaryColors
   appId: string
   facingMode: FacingMode
   mirror: boolean
@@ -35,6 +38,7 @@ export interface Settings {
 
 const storageKeys = {
   themeCode: 'color-theme',
+  primaryColor: 'primary',
   appId: 'appid',
   facingMode: 'facing-mode',
   mirror: 'mirror',
@@ -53,7 +57,8 @@ const storageKeys = {
 const initialState: Settings = {
   themeCode:
     (localStorage.getItem(storageKeys.themeCode) as ThemeCode) ?? 'dark',
-  appId: localStorage.getItem(storageKeys.appId) ?? 'g2m0ya7w7', // demo only
+  primaryColor: 'lightBlue',
+  appId: localStorage.getItem(storageKeys.appId) ?? 'd8lk7l4ed',
   facingMode:
     (localStorage.getItem(storageKeys.facingMode) as FacingMode) ?? 'user',
   mirror: localStorage.getItem(storageKeys.mirror) == 'true' ?? false,
@@ -84,6 +89,12 @@ export const settingSlice = createSlice({
   name: 'settings',
   initialState,
   reducers: {
+    changeTheme: (state, { payload }: PayloadAction<ThemeCode>) => {
+      state.themeCode = payload
+    },
+    changeColor: (state, { payload }: PayloadAction<keyof PrimaryColors>) => {
+      state.primaryColor = payload
+    },
     update: (state, { payload }: PayloadAction<Partial<Settings>>) => {
       return {
         ...state,
@@ -147,6 +158,8 @@ export const settingSlice = createSlice({
 })
 
 export const {
+  changeTheme,
+  changeColor,
   update,
   save,
   setDefaultCamera,

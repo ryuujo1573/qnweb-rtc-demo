@@ -36,10 +36,13 @@ export default function VideoPlayer({ autoPlay, src, sx }: VideoPlayerProps) {
           break
         }
         default: {
-          debugger
+          // debugger
           setState('error')
         }
       }
+    })
+    hls.on(Hls.Events.FRAG_LOADED, () => {
+      setState('playing')
     })
   }, [videoRef.current])
   return (

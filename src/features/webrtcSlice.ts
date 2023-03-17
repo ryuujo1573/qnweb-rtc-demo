@@ -38,13 +38,20 @@ export const createTrack = createAsyncThunk<
   ThunkAPI
 >('webrtc/createTrack', async (tag, { dispatch, getState }) => {
   let tracks: QNLocalTrack[] = []
+  const store = getState()
   const {
     facingMode,
     cameraPreset,
     defaultCamera,
     defaultMicrophone,
     defaultPlayback,
-  } = getState().settings
+  } = store.settings
+  const { localTrack } = store.webrtc
+
+  if (localTrack[tag] != undefined) {
+    dispatch(removeTrack(tag))
+  }
+
   // for (const tag of trackTags)
   switch (tag) {
     case 'microphone': {
@@ -92,7 +99,7 @@ export const createTrack = createAsyncThunk<
       break
   }
   await client.publish(tracks)
-  tracks.forEach((t) => refStore.localTracks.set(t.trackID!, t))
+  tracks.forEach((t) => refStore.localTracksMap.set(t.trackID!, t))
 
   return Object.fromEntries(tracks.map((t) => [t.tag!, t.trackID!]))
 
@@ -158,7 +165,7 @@ export const subscribe = createAsyncThunk(
     const allTracks = [...videoTracks, ...audioTracks]
     const userId = allTracks[0].userID!
     for (const track of allTracks) {
-      refStore.remoteTracks.set(track.trackID!, track)
+      refStore.remoteTracksMap.set(track.trackID!, track)
     }
     return { trackIds: allTracks.map((t) => t.trackID!), userId }
   }
@@ -172,7 +179,7 @@ export const unsubscribe = createAsyncThunk(
 
     await client.unsubscribe(tracks)
     for (const trackId of removalIds) {
-      refStore.remoteTracks.delete(trackId)
+      refStore.remoteTracksMap.delete(trackId)
     }
     return { trackIds: removalIds, userId }
   }
@@ -188,7 +195,7 @@ const supportedTracks = [
 
 export type TrackTag = typeof supportedTracks[number]
 
-type WebRTCState = {
+export type WebRTCState = {
   localTrack: {
     [key in typeof supportedTracks[number]]?: string
   }
@@ -196,6 +203,7 @@ type WebRTCState = {
   users: RemoteUser[]
   livemode: boolean
   pinnedTrackId?: string
+  focusedTrackId?: string
 }
 
 const initialState: WebRTCState = {
@@ -222,7 +230,7 @@ const webrtcSlice = createSlice({
     userLeft: (state, { payload: uid }: PayloadAction<string>) => {
       const user = state.users.find((u) => u.userID == uid)!
       for (const trackId of user.trackIds) {
-        refStore.remoteTracks.delete(trackId)
+        refStore.remoteTracksMap.delete(trackId)
       }
       state.users = state.users.filter((v) => v.userID != uid)
     },
@@ -244,16 +252,25 @@ const webrtcSlice = createSlice({
       }
 
       function trackCleanup(trackId: string) {
-        const track = refStore.localTracks.get(trackId)
+        const track = refStore.localTracksMap.get(trackId)
         if (track) {
           client.unpublish(track).catch(() => {})
           track.destroy()
-          refStore.localTracks.delete(trackId)
+          refStore.localTracksMap.delete(trackId)
         }
       }
     },
-    pinTrack: (state, { payload }: PayloadAction<string | undefined>) => {
+    pinTrack: (state, { payload }: PayloadAction<string>) => {
       state.pinnedTrackId = payload
+    },
+    unpinTrack: (state) => {
+      state.pinnedTrackId = undefined
+    },
+    focusTrack: (state, { payload }: PayloadAction<string | undefined>) => {
+      state.focusedTrackId = payload
+    },
+    unfocusTrack: (state) => {
+      state.focusedTrackId = undefined
     },
   },
   extraReducers: (builder) => {
@@ -296,4 +313,7 @@ export const {
   removeTrack,
   setLivemode,
   pinTrack,
+  unpinTrack,
+  focusTrack,
+  unfocusTrack,
 } = webrtcSlice.actions

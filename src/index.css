@@ -15,6 +15,8 @@
 
 body {
   height: 100vh;
+  /* ios mobile viewport bug fix */
+  max-height: -webkit-fill-available;
 }
 
 input::-webkit-outer-spin-button,
@@ -30,9 +32,7 @@ input[type='number'] {
 }
 
 #root {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
+  display: contents;
 }
 
 .logo {
