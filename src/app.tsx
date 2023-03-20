@@ -1,13 +1,7 @@
-import {
-  Alert,
-  CssBaseline,
-  PaletteOptions,
-  Snackbar,
-  ThemeProvider,
-} from '@mui/material'
+import { Alert, CssBaseline, Snackbar, ThemeProvider } from '@mui/material'
 import { createTheme } from '@mui/material/styles'
 import * as colors from '@mui/material/colors'
-import { FC, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 
 import { reset } from './features/messageSlice'
@@ -41,8 +35,7 @@ const router = createHashRouter(
   }
 )
 
-export const App: FC = () => {
-  // theme / darkmode
+export const App = () => {
   const { themeCode, primaryColor } = useAppSelector((s) => s.settings)
   const [darkmode, toggleDarkmode] = useState(themeCode == 'dark')
   const dispatch = useAppDispatch()
@@ -54,7 +47,6 @@ export const App: FC = () => {
         ? {
             mode: 'dark',
             primary: colors[primaryColor],
-            // secondary: colors.teal,
             text: {
               primary: grey[300],
               secondary: grey[500],
@@ -67,7 +59,6 @@ export const App: FC = () => {
         : {
             mode: 'light',
             primary: colors[primaryColor],
-            // secondary: colors.teal,
             text: {
               primary: grey[900],
               secondary: grey[800],

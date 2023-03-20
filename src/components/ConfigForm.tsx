@@ -269,7 +269,6 @@ export const ComposedConfigForm = forwardRef<
     lastStreamId,
   } = useAppSelector((s) => s.stream)
 
-  const [editing, setEditing] = useState(false)
   const [pendingNewTrackId, setNewTrackId] = useState('')
   const [nstExpanded, setExpanded] = useState([false, false])
   const handleExpand = (i: number) => (_evt: unknown, expanded: boolean) => {
@@ -605,61 +604,45 @@ export const ComposedConfigForm = forwardRef<
                 暂无可用媒体流
               </Typography>
             ) : (
-              <>
-                <ListItem>
-                  <ListItemAvatar>
-                    <IconButton
-                      onClick={() => {
-                        setEditing((editing) => !editing)
-                      }}
-                    >
-                      <AddCircleOutlineRounded />
-                    </IconButton>
-                  </ListItemAvatar>
-                  <ListItemText>添加媒体流</ListItemText>
-                </ListItem>
-                {editing && (
-                  <Grow in={editing}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        m: 1,
-                      }}
-                    >
-                      <TextField
-                        select
-                        fullWidth
-                        size="small"
-                        label="选择媒体轨道"
-                        value={pendingNewTrackId}
-                        onChange={(evt) => {
-                          setNewTrackId(evt.target.value)
-                        }}
-                      >
-                        {allTracks.map((t) => {
-                          return (
-                            <MenuItem key={t.trackID} value={t.trackID}>
-                              {t.userID} | {t.trackID}
-                            </MenuItem>
-                          )
-                        })}
-                      </TextField>
-                      <Button
-                        disabled={!pendingNewTrackId}
-                        onClick={() => {
-                          if (pendingNewTrackId) {
-                            appendTrack({
-                              trackID: pendingNewTrackId,
-                            })
-                          }
-                        }}
-                      >
-                        添加
-                      </Button>
-                    </Box>
-                  </Grow>
-                )}
-              </>
+              <Grow in={nstExpanded[1]}>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    m: 1,
+                  }}
+                >
+                  <TextField
+                    select
+                    fullWidth
+                    size="small"
+                    label="选择媒体轨道"
+                    value={pendingNewTrackId}
+                    onChange={(evt) => {
+                      setNewTrackId(evt.target.value)
+                    }}
+                  >
+                    {allTracks.map((t) => {
+                      return (
+                        <MenuItem key={t.trackID} value={t.trackID}>
+                          {t.userID} | {t.trackID}
+                        </MenuItem>
+                      )
+                    })}
+                  </TextField>
+                  <Button
+                    disabled={!pendingNewTrackId}
+                    onClick={() => {
+                      if (pendingNewTrackId) {
+                        appendTrack({
+                          trackID: pendingNewTrackId,
+                        })
+                      }
+                    }}
+                  >
+                    添加
+                  </Button>
+                </Box>
+              </Grow>
             )}
             {transcodingTracks.map((trackConfig, index) => {
               const trackID = trackConfig.trackID
@@ -677,7 +660,10 @@ export const ComposedConfigForm = forwardRef<
                 track.getMediaStreamTrack() ?? {}
               const displayId = id?.slice(-12) ?? trackID
               const secondaryText = `[${userID}] #${displayId}`
-              const primaryText = label ?? '未知设备'
+              const primaryText =
+                label == 'MediaStreamAudioDestinationNode'
+                  ? '默认麦克风'
+                  : label ?? '未知设备'
 
               const selected = true
 

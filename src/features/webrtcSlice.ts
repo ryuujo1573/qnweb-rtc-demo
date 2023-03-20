@@ -289,7 +289,6 @@ const webrtcSlice = createSlice({
   initialState,
   reducers: {
     stateChanged: (state, { payload }: PayloadAction<QState>) => {
-      console.log(payload)
       state.connectionState = payload
     },
     setLivemode: (state, { payload }: PayloadAction<boolean>) => {

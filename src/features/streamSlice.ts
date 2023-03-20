@@ -60,13 +60,11 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
     } else if (liveMode == 'composed') {
       client.once('transcoding-livestreaming-state-changed', handler)
       const { transcodingTracks, ...rest } = composedConfig
-      console.log('# composed', composedConfig)
       await client.startTranscodingLiveStreaming({
         url,
         streamID,
         ...rest,
       })
-      console.log("# here i'm not stuck!")
       if (transcodingTracks) {
         await client.setTranscodingLiveStreamingTracks(
           streamID,

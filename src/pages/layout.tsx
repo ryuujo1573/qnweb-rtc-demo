@@ -137,10 +137,10 @@ export default function Layout() {
           设置
         </IconButton>
       </Box>
-      {drawerOpen && (
+      {
         <SwipeableDrawer
           anchor={'right'}
-          open={true}
+          open={drawerOpen}
           onClose={toggleDrawerHandler('off')}
           onOpen={toggleDrawerHandler('on')}
           sx={{
@@ -277,7 +277,7 @@ export default function Layout() {
             />
           </SectionFragment>
           <SectionFragment title="视频">
-            <VideoPreview />
+            <VideoPreview shouldPlay={drawerOpen} />
             <ToggleButton
               value={true}
               selected={mirror}
@@ -345,7 +345,7 @@ export default function Layout() {
             </Link>
           </SectionFragment>
         </SwipeableDrawer>
-      )}
+      }
     </>
   )
 }

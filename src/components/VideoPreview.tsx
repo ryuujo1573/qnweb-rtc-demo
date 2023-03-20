@@ -3,48 +3,53 @@ import QNRTC, { QNLocalVideoTrack } from 'qnweb-rtc'
 import { useEffect, useRef, useState } from 'react'
 import { useAppSelector } from '../store'
 
-export interface VideoPreviewProps {}
+export interface VideoPreviewProps {
+  shouldPlay: boolean
+}
 
-const VideoPreview = ({ ...boxProps }: VideoPreviewProps & BoxProps) => {
+const VideoPreview = ({
+  shouldPlay,
+  ...boxProps
+}: VideoPreviewProps & BoxProps) => {
   const { mirror, facingMode, defaultCamera, cameraPreset } = useAppSelector(
     (s) => s.settings
   )
   const boxRef = useRef<HTMLDivElement>()
   const [track, setTrack] = useState<QNLocalVideoTrack>()
-  const [showSkeleton, setShown] = useState(true)
+  const showSkeleton = !track
 
   useEffect(() => {
-    QNRTC.createCameraVideoTrack({
-      facingMode,
-      cameraId: defaultCamera,
-      encoderConfig: cameraPreset,
-    }).then(setTrack)
+    console.log('#shouldPlay', shouldPlay)
+    if (shouldPlay) {
+      QNRTC.createCameraVideoTrack({
+        facingMode,
+        cameraId: defaultCamera,
+        encoderConfig: cameraPreset,
+      }).then(setTrack)
 
-    return () => {
-      setTrack((track) => {
-        track?.destroy()
-        return undefined
-      })
-    }
-  }, [facingMode, defaultCamera, cameraPreset])
-
-  useEffect(() => {
-    if (boxRef.current && showSkeleton) {
-      if (track) {
-        track.play(boxRef.current, { mirror: false })
-        setShown(false)
+      return () => {
+        setTrack((track) => {
+          track?.destroy()
+          return undefined
+        })
       }
+    }
+  }, [shouldPlay, facingMode, defaultCamera, cameraPreset])
+
+  useEffect(() => {
+    if (boxRef.current) {
+      track?.play(boxRef.current)
     }
   }, [boxRef.current, track])
 
   return (
     <Box
-      className={(mirror && 'mirror') || undefined}
+      className={mirror ? 'mirror' : undefined}
       ref={boxRef}
       sx={{
         position: 'relative',
-        // width: '328px',
-        // minHeight: '180px',
+        maxWidth: '328px',
+        minHeight: '180px',
       }}
       {...boxProps}
     >

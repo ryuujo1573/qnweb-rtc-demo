@@ -23,7 +23,6 @@ const AudioWave = memo(({ track, ...canvasProps }: AudioWaveProps) => {
     // 时域/频域
     const timeData = track.getCurrentTimeDomainData()
     // const freqData = this.props.stream.getCurrentFrequencyData();
-    // console.log(timeData)
     if (!timeData) return
 
     context.fillStyle = color

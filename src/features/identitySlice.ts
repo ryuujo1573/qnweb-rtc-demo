@@ -14,7 +14,6 @@ const updateUserIdReducer = function (
   { payload: userId }: PayloadAction<string>
 ) {
   if (checkUserId(userId) == false) {
-    console.warn('UserId format not satisfied.', { payload: userId })
     return
   }
   state.userId = userId

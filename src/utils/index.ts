@@ -48,7 +48,6 @@ export function throttle<TArgs extends any[]>(
 
 export function getRandomId(): string {
   const result = Math.floor(Math.random() * 2 ** 64).toString(16)
-  console.info('randomID', result)
   return result
 }
 

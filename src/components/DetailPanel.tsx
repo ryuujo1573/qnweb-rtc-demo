@@ -19,6 +19,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
 import { client } from '../api'
+import { useAppSelector } from '../store'
 
 export type DetailPanelProps = {
   tracks: (QNTrack | undefined)[]
@@ -37,13 +38,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
   const { roomId } = useParams()
   const theme = useTheme()
 
-  const [state, setState] = useState<QState>(QState.DISCONNECTED)
-  useEffect(() => {
-    client.addListener('connection-state-changed', setState)
-    return () => {
-      client.removeListener('connection-state-changed', setState)
-    }
-  }, [])
+  const { connectionState: state } = useAppSelector((s) => s.webrtc)
 
   // seperate tracks & store device labels in tags
   const [audioTracks, videoTracks] = useMemo(

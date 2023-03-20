@@ -1,6 +1,7 @@
-import { Box, BoxProps, styled } from '@mui/material'
+import { Box, BoxProps } from '@mui/material'
 import { QNLocalVideoTrack, QNRemoteVideoTrack } from 'qnweb-rtc'
-import { forwardRef, memo, useContext, useEffect, useRef } from 'react'
+import { forwardRef, memo, useEffect, useRef } from 'react'
+
 import { useAppDispatch, useAppSelector } from '../store'
 import { pinTrack } from '../features/webrtcSlice'
 
@@ -12,7 +13,6 @@ export interface VideoBoxProps {
 const VideoBox = memo(
   forwardRef<HTMLDivElement, VideoBoxProps & BoxProps>(
     ({ videoTrack, sx, ...boxProps }, ref) => {
-      console.log('# VideoBox render, track', videoTrack)
       const boxRef = useRef<HTMLDivElement>()
       const dispatch = useAppDispatch()
       const pinnedTrackId = useAppSelector((s) => s.webrtc.pinnedTrackId)
@@ -50,7 +50,6 @@ const VideoBox = memo(
             let touched = false
             const maxInterval = 300
             videoTrack.mediaElement.ontouchstart = (e) => {
-              console.log('# touch')
               if (touched) {
                 pinCurrentTrack()
               } else {
@@ -74,7 +73,7 @@ const VideoBox = memo(
               }
             }
           }}
-          bgcolor={'black'}
+          bgcolor="black"
           display={pinned ? 'none' : 'flex'}
           sx={{
             height: '100%',

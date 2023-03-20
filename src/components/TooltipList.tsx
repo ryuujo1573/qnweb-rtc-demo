@@ -32,7 +32,6 @@ export default function TooltipList<
         disablePadding
         disableGutters
         onClick={() => {
-          console.log(`[${label}] selected. %c(${i})`, 'color: gray')
           setSelected(i)
           onSelect(list[i], i)
         }}

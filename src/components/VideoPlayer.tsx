@@ -29,7 +29,7 @@ export default function VideoPlayer({ autoPlay, src, sx }: VideoPlayerProps) {
       video.play()
     })
     hls.on(Hls.Events.ERROR, (evt, data) => {
-      // console.error(data.err)
+      console.error(JSON.parse(JSON.stringify(data)))
       switch (data.details) {
         case 'bufferStalledError': {
           setState('idle')

@@ -157,7 +157,6 @@ export default function RoomPage() {
       if (syncFlag.current == 'idle') {
         syncFlag.current = 'connecting'
         const token = tokenRef.current
-        console.log('#join')
         if (token) {
           dispatch(joinRoom({ token }))
         } else {
@@ -169,7 +168,6 @@ export default function RoomPage() {
         syncFlag.current = 'connected'
         return () => {
           if (syncFlag.current == 'connected') {
-            console.log('#leave')
             dispatch(removeTrack())
             dispatch(leaveRoom())
           }
@@ -208,19 +206,15 @@ export default function RoomPage() {
     if (connected) {
       // create `camTrack` only if set unmuted to true
       if (!camMuted && !camTrack) {
-        // console.log('#create CAM')
         dispatch(createTrack('camera'))
       } else if (camMuted && camTrack) {
-        // console.log('#remove CAM')
         dispatch(removeTrack('camera'))
       }
 
       // the same logic as camera
       if (!micMuted && !micTrack) {
-        // console.log('#create MIC')
         dispatch(createTrack('microphone'))
       } else if (micMuted && micTrack) {
-        // console.log('#remove MIC')
         dispatch(removeTrack('microphone'))
       }
     }
@@ -289,14 +283,13 @@ export default function RoomPage() {
     200
   )
 
-  // console.log('# RoomPage render, track', camTrack)
   Object.assign(window, { camTrack })
 
   return (
     <Box
       display="flex"
       flexDirection="column"
-      maxHeight="100%"
+      height="100%"
       onClick={singleClickHandler}
     >
       <>
