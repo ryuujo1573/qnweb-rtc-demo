@@ -30,10 +30,16 @@ import { MutableRefObject, useRef, useState } from 'react'
 import { Outlet, useOutletContext } from 'react-router'
 
 import { VideoPreview } from '../components'
-import { allPresets, allPresetsText } from '../consts'
+import {
+  allCameraPresets,
+  allCameraPresetsText,
+  allScreenPresets,
+  allScreenPresetsText,
+} from '../consts'
 import { updateUserId } from '../features/identitySlice'
 import {
-  isValidPreset,
+  isCameraPreset,
+  isScreenPreset,
   save,
   setDefaultCamera,
   update,
@@ -65,6 +71,7 @@ export default function Layout() {
     cameras,
     defaultCamera,
     cameraPreset,
+    screenPreset,
     cameraMuted,
     microphoneMuted,
     neverPrompt,
@@ -137,45 +144,44 @@ export default function Layout() {
           设置
         </IconButton>
       </Box>
-      {
-        <SwipeableDrawer
-          anchor={'right'}
-          open={drawerOpen}
-          onClose={toggleDrawerHandler('off')}
-          onOpen={toggleDrawerHandler('on')}
+      <SwipeableDrawer
+        anchor={'right'}
+        open={drawerOpen}
+        onClose={toggleDrawerHandler('off')}
+        onOpen={toggleDrawerHandler('on')}
+        sx={{
+          [`& .${paperClasses.root}`]: {
+            width: mobile ? '100%' : '360px',
+            gap: 2,
+            padding: 2,
+            overflowY: 'scroll',
+          },
+        }}
+      >
+        <Box
           sx={{
-            [`& .${paperClasses.root}`]: {
-              width: mobile ? '100%' : '360px',
-              gap: 2,
-              padding: 2,
-              overflowY: 'scroll',
-            },
+            display: 'flex',
+            alignItems: 'center',
           }}
         >
-          <Box
+          <Typography
+            sx={{ userSelect: 'none' }}
+            variant="h6"
+            component={'span'}
+          >
+            设置
+          </Typography>
+          <IconButton
+            onClick={toggleDrawerHandler('off')}
             sx={{
-              display: 'flex',
-              alignItems: 'center',
+              marginLeft: 'auto',
             }}
           >
-            <Typography
-              sx={{ userSelect: 'none' }}
-              variant="h6"
-              component={'span'}
-            >
-              设置
-            </Typography>
-            <IconButton
-              onClick={toggleDrawerHandler('off')}
-              sx={{
-                marginLeft: 'auto',
-              }}
-            >
-              <CloseRounded />
-            </IconButton>
-          </Box>
-          <Divider variant="fullWidth" />
-          {/* <SectionFragment title="主题模式">
+            <CloseRounded />
+          </IconButton>
+        </Box>
+        <Divider variant="fullWidth" />
+        {/* <SectionFragment title="主题模式">
             <ToggleButtonGroup
               fullWidth
               color="primary"
@@ -201,151 +207,170 @@ export default function Layout() {
               </ToggleButton>
             </ToggleButtonGroup>
           </SectionFragment> */}
-          <SectionFragment title="默认操作">
-            <Box display="flex" flexDirection="column">
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={!microphoneMuted}
-                    onChange={(_, v) => {
-                      dispatch(save({ microphoneMuted: !v }))
-                    }}
-                  />
-                }
-                label="入会开启麦克风"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={!cameraMuted}
-                    onChange={(_, v) => {
-                      dispatch(save({ cameraMuted: !v }))
-                    }}
-                  />
-                }
-                label="入会开启摄像头"
-              />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={neverPrompt}
-                    onChange={(_, v) => {
-                      dispatch(save({ neverPrompt: v }))
-                    }}
-                  />
-                }
-                label="跳过入会时设备检查"
-              />
-
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={showProfile}
-                    onChange={(_, v) => {
-                      dispatch(save({ showProfile: v }))
-                    }}
-                  />
-                }
-                label="显示媒体详细信息"
-              />
-            </Box>
-          </SectionFragment>
-          <SectionFragment title="用户">
-            <TextField
-              label="修改userID"
-              variant="standard"
-              placeholder={userId ?? undefined}
-              value={userIdText}
-              onChange={(e) => setUserIdText(e.target.value)}
-              onKeyDown={handleModifyId}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <AccountCircleRounded />
-                  </InputAdornment>
-                ),
-                endAdornment: (
-                  <Fade in={checkUserId(userIdText)}>
-                    <InputAdornment position="end">
-                      <IconButton onClick={handleModifyId}>
-                        <CheckRounded />
-                      </IconButton>
-                    </InputAdornment>
-                  </Fade>
-                ),
-              }}
+        <SectionFragment title="默认操作">
+          <Box display="flex" flexDirection="column">
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={!microphoneMuted}
+                  onChange={(_, v) => {
+                    dispatch(save({ microphoneMuted: !v }))
+                  }}
+                />
+              }
+              label="入会开启麦克风"
             />
-          </SectionFragment>
-          <SectionFragment title="视频">
-            <VideoPreview shouldPlay={drawerOpen} />
-            <ToggleButton
-              value={true}
-              selected={mirror}
-              onChange={() => {
-                dispatch(update({ mirror: !mirror }))
-              }}
-            >
-              <FlipRounded />
-              &nbsp;视频镜像翻转
-            </ToggleButton>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={!cameraMuted}
+                  onChange={(_, v) => {
+                    dispatch(save({ cameraMuted: !v }))
+                  }}
+                />
+              }
+              label="入会开启摄像头"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={neverPrompt}
+                  onChange={(_, v) => {
+                    dispatch(save({ neverPrompt: v }))
+                  }}
+                />
+              }
+              label="跳过入会时设备检查"
+            />
 
-            <TextField
-              select
-              fullWidth
-              label="视频设备"
-              variant="standard"
-              value={defaultCamera}
-              disabled={!cameras.length}
-              onChange={(evt) => {
-                dispatch(setDefaultCamera(evt.target.value))
-              }}
-            >
-              {cameras.map((camInfo) => {
-                return (
-                  <MenuItem key={camInfo.deviceId} value={camInfo.deviceId}>
-                    {camInfo.label}
-                  </MenuItem>
-                )
-              })}
-            </TextField>
-            <TextField
-              select
-              fullWidth
-              label="视频规格预设"
-              variant="standard"
-              value={cameraPreset}
-              onChange={(evt) => {
-                if (isValidPreset(evt.target.value)) {
-                  dispatch(update({ cameraPreset: evt.target.value }))
-                }
-              }}
-            >
-              {allPresets.map((key) => (
-                <MenuItem key={key} value={key}>
-                  {allPresetsText[key]}
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={showProfile}
+                  onChange={(_, v) => {
+                    dispatch(save({ showProfile: v }))
+                  }}
+                />
+              }
+              label="显示媒体详细信息"
+            />
+          </Box>
+        </SectionFragment>
+        <SectionFragment title="用户">
+          <TextField
+            label="修改userID"
+            variant="standard"
+            placeholder={userId ?? undefined}
+            value={userIdText}
+            onChange={(e) => setUserIdText(e.target.value)}
+            onKeyDown={handleModifyId}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <AccountCircleRounded />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <Fade in={checkUserId(userIdText)}>
+                  <InputAdornment position="end">
+                    <IconButton onClick={handleModifyId}>
+                      <CheckRounded />
+                    </IconButton>
+                  </InputAdornment>
+                </Fade>
+              ),
+            }}
+          />
+        </SectionFragment>
+        <SectionFragment title="视频">
+          <VideoPreview shouldPlay={drawerOpen} />
+          <ToggleButton
+            value={true}
+            selected={mirror}
+            onChange={() => {
+              dispatch(update({ mirror: !mirror }))
+            }}
+          >
+            <FlipRounded />
+            &nbsp;视频镜像翻转
+          </ToggleButton>
+
+          <TextField
+            select
+            fullWidth
+            label="视频设备"
+            variant="standard"
+            value={defaultCamera}
+            disabled={!cameras.length}
+            onChange={(evt) => {
+              dispatch(setDefaultCamera(evt.target.value))
+            }}
+          >
+            {cameras.map((camInfo) => {
+              return (
+                <MenuItem key={camInfo.deviceId} value={camInfo.deviceId}>
+                  {camInfo.label}
                 </MenuItem>
-              ))}
-            </TextField>
-          </SectionFragment>
-          <SectionFragment title="关于">
-            <Typography variant="body2" textAlign="left">
-              DEMO VERSION:{' '}
-              <b>
-                {import.meta.env.VITE_APP_VERSION}:{' '}
-                {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}
-              </b>
-              <br />
-              SDK VERSION: <b>{QNRTC.VERSION}</b>
-              <br />
-              BUILD TIME: <b>{buildDate.toLocaleString()}</b> (
-              {getPassedTimeDesc(buildDate)})
-            </Typography>
-            <Link href="https://www.qiniu.com/products/rtn" variant="body2">
-              Qiniu 七牛云
-            </Link>
-          </SectionFragment>
-        </SwipeableDrawer>
-      }
+              )
+            })}
+          </TextField>
+          <TextField
+            select
+            fullWidth
+            label="视频规格预设"
+            variant="standard"
+            value={cameraPreset}
+            onChange={(evt) => {
+              if (isCameraPreset(evt.target.value)) {
+                dispatch(update({ cameraPreset: evt.target.value }))
+              }
+            }}
+          >
+            {allCameraPresets.map((key) => (
+              <MenuItem key={key} value={key}>
+                {allCameraPresetsText[key]}
+              </MenuItem>
+            ))}
+          </TextField>
+        </SectionFragment>
+        <SectionFragment title="屏幕共享">
+          <TextField
+            select
+            fullWidth
+            label="屏幕共享规格"
+            variant="standard"
+            value={screenPreset}
+            onChange={(evt) => {
+              if (isScreenPreset(evt.target.value)) {
+                dispatch(update({ screenPreset: evt.target.value }))
+              }
+            }}
+          >
+            {allScreenPresets.map((key) => (
+              <MenuItem key={key} value={key}>
+                {allScreenPresetsText[key]}
+              </MenuItem>
+            ))}
+          </TextField>
+        </SectionFragment>
+        <SectionFragment title="关于">
+          <Typography variant="body2" textAlign="left">
+            DEMO VERSION:{' '}
+            <b>
+              {import.meta.env.VITE_APP_VERSION}:{' '}
+              {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}
+            </b>
+            <br />
+            SDK VERSION: <b>{QNRTC.VERSION}</b>
+            <br />
+            BUILD TIME: <b>{buildDate.toLocaleString()}</b> (
+            {getPassedTimeDesc(buildDate)})
+          </Typography>
+          <Link href="https://www.qiniu.com/products/rtn" variant="body2">
+            Qiniu 七牛云
+          </Link>
+        </SectionFragment>
+      </SwipeableDrawer>
     </>
   )
 }

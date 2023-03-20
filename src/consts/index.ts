@@ -1,3 +1,13 @@
-import { allPresets, allPresetsText } from './device'
+import {
+  allCameraPresets,
+  allCameraPresetsText,
+  allScreenPresets,
+  allScreenPresetsText,
+} from './device'
 
-export { allPresets, allPresetsText }
+export {
+  allCameraPresets,
+  allCameraPresetsText,
+  allScreenPresets,
+  allScreenPresetsText,
+}

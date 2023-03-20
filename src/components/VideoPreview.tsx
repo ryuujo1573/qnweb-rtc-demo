@@ -38,7 +38,7 @@ const VideoPreview = ({
 
   useEffect(() => {
     if (boxRef.current) {
-      track?.play(boxRef.current)
+      track?.play(boxRef.current, { mirror: false })
     }
   }, [boxRef.current, track])
 

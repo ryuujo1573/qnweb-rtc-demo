@@ -1,5 +1,8 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit'
-import QNRTC, { SUPPORT_VIDEO_ENCODER_CONFIG_LIST } from 'qnweb-rtc'
+import QNRTC, {
+  SUPPORT_SCREEN_ENCODER_CONFIG_LIST,
+  SUPPORT_VIDEO_ENCODER_CONFIG_LIST,
+} from 'qnweb-rtc'
 import { RootState } from '../store'
 
 export type ThemeCode = 'light' | 'auto' | 'dark'
@@ -8,8 +11,14 @@ export type FacingMode = 'environment' | 'user'
 
 export type PlainDeviceInfo = Omit<MediaDeviceInfo, 'toJSON'>
 
-export type Preset = keyof typeof SUPPORT_VIDEO_ENCODER_CONFIG_LIST
-export function isValidPreset(str: string): str is Preset {
+export type CameraPreset = keyof typeof SUPPORT_VIDEO_ENCODER_CONFIG_LIST
+export type ScreenPreset = keyof typeof SUPPORT_SCREEN_ENCODER_CONFIG_LIST
+
+export function isScreenPreset(str: string): str is ScreenPreset {
+  return Object.keys(SUPPORT_SCREEN_ENCODER_CONFIG_LIST).includes(str)
+}
+
+export function isCameraPreset(str: string): str is CameraPreset {
   return Object.keys(SUPPORT_VIDEO_ENCODER_CONFIG_LIST).includes(str)
 }
 
@@ -29,8 +38,9 @@ export interface Settings {
   defaultCamera?: string
   defaultMicrophone?: string
   defaultPlayback?: string
-  cameraPreset: Preset
+  cameraPreset: CameraPreset
   cameraMuted?: boolean
+  screenPreset: ScreenPreset
   microphoneMuted?: boolean
   neverPrompt: boolean
   showProfile: boolean
@@ -52,7 +62,7 @@ const storageKeys = {
   defaultPlayback: 'microphone',
   neverPrompt: 'never-prompt',
   showProfile: 'show-profile',
-} as const satisfies Partial<Record<keyof Settings, string>>
+} as const // satisfies Partial<Record<keyof Settings, string>>
 
 const initialState: Settings = {
   themeCode:
@@ -70,6 +80,7 @@ const initialState: Settings = {
   microphones: [],
   cameras: [],
   cameraPreset: '720p',
+  screenPreset: '1080p',
   cameraMuted: localStorage.getItem(storageKeys.cameraMuted) == 'true' ?? false,
   microphoneMuted:
     localStorage.getItem(storageKeys.microphoneMuted) == 'true' ?? false,
