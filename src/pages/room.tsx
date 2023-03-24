@@ -20,11 +20,8 @@ import {
   styled,
 } from '@mui/material'
 import {
-  QNCameraVideoTrack,
   QNLocalVideoTrack,
-  QNMicrophoneAudioTrack,
   QNRemoteVideoTrack,
-  QNScreenVideoTrack,
   QNConnectionState as QState,
 } from 'qnweb-rtc'
 import React, {
@@ -41,6 +38,9 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
+import Draggable from 'react-draggable'
+import { SwiperModule } from 'swiper/types'
+import { getRtmpUrl } from '../api'
 import {
   DetailPanel,
   OobePanel,
@@ -67,18 +67,15 @@ import {
   removeTrack,
   unpinTrack,
 } from '../features/webrtcSlice'
-import { store, useAppDispatch, useAppSelector } from '../store'
+import { useAppDispatch, useAppSelector } from '../store'
 import {
   checkRoomId,
   checkUserId,
   isMobile,
-  isVideoTrack,
   stringToColor,
   useDebounce,
 } from '../utils'
-import Draggable from 'react-draggable'
 import { useThrottle } from '../utils/hooks'
-import { getRtmpUrl } from '../api'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -119,8 +116,12 @@ export default function RoomPage() {
     microphoneMuted,
   } = useAppSelector((s) => s.settings)
 
-  const [camMuted, setCamMuted] = useState(cameraMuted)
-  const [micMuted, setMicMuted] = useState(microphoneMuted)
+  const [camMuted, _setCamMuted] = useState(cameraMuted)
+  const [micMuted, _setMicMuted] = useState(microphoneMuted)
+
+  const setCamMuted = useThrottle(_setCamMuted, 600)
+  const setMicMuted = useThrottle(_setMicMuted, 600)
+
   // session states
   const {
     connectionState: state,
@@ -286,12 +287,7 @@ export default function RoomPage() {
   Object.assign(window, { camTrack })
 
   return (
-    <Box
-      display="flex"
-      flexDirection="column"
-      height="100%"
-      onClick={singleClickHandler}
-    >
+    <Box height="100%" onClick={singleClickHandler}>
       <>
         {oobe && (
           <OobePanel
@@ -345,7 +341,7 @@ export default function RoomPage() {
               sx={{
                 position: 'fixed',
                 height: '60px',
-                zIndex: 114514,
+                zIndex: 1150,
                 background: mobile ? '#00000080' : 'inherit',
                 bottom: 0,
                 left: 0,
@@ -391,7 +387,7 @@ export default function RoomPage() {
                   <IconButton
                     disabled={!connected || !microphones}
                     onClick={(e) => {
-                      micTrack?.setMuted(true)
+                      micTrack?.setMuted(!micMuted)
                       setMicMuted(!micMuted)
                       e.stopPropagation()
                     }}
@@ -435,7 +431,7 @@ export default function RoomPage() {
                   <IconButton
                     disabled={!connected || !cameras}
                     onClick={(e) => {
-                      camTrack?.setMuted(true)
+                      camTrack?.setMuted(!camMuted)
                       setCamMuted(!camMuted)
                       e.stopPropagation()
                     }}
@@ -512,8 +508,17 @@ function RoomPage_S({
   const dispatch = useAppDispatch()
 
   // const parts = useMemo(() => {
+
   const parts: RemoteUser[][] = []
-  users.forEach((_, i, array) => {
+
+  ;[
+    ...users,
+    ...new Array(11).fill(0).map((_, i) => ({
+      userID: `C${i}eeper`,
+      state: QState.CONNECTED,
+      trackIds: [],
+    })),
+  ].forEach((_, i, array) => {
     const n = 4
     // truncate digits using bitwise ops
     const period = (i / n) >> 0
@@ -524,30 +529,39 @@ function RoomPage_S({
   // return parts
   // }, [users])
 
-  const modules = useRef([Pagination])
-  let touching = false
-  const touchDuration = 800
+  const modules = useRef<SwiperModule[]>()
+  if (!modules.current) {
+    modules.current = [Pagination]
+  }
   return (
-    <Box flex={1}>
+    <Box height="100%">
       <Swiper pagination modules={modules.current}>
         {pinnedTrackId && (
           <SwiperSlide>
-            <IconButton
-              sx={{
-                position: 'absolute',
-                right: 0,
-                bottom: '60px',
-                margin: 2,
-              }}
-            >
-              <PushPinRounded />
-            </IconButton>
             <Box
               ref={boxRef}
               sx={{
                 display: 'contents',
               }}
             ></Box>
+            <Button
+              sx={{
+                position: 'absolute',
+                right: 0,
+                bottom: '60px',
+                margin: 1,
+                '& .stroke::after': {
+                  content: "'/'",
+                },
+              }}
+              color="inherit"
+              variant={pinnedTrackId ? 'text' : 'outlined'}
+              onClick={() => {
+                dispatch(unpinTrack())
+              }}
+            >
+              <PushPinRounded className={pinnedTrackId && 'stroke'} />
+            </Button>
           </SwiperSlide>
         )}
         {parts.map((page, i) => (
@@ -692,18 +706,20 @@ function RoomPage_L({
 
 const FloatVideoBox = styled(VideoBox)({
   zIndex: 1000,
-  maxHeight: '240px',
-  maxWidth: '240px',
+  '& video': {
+    maxHeight: '240px',
+    maxWidth: '240px',
+    width: 'auto !important',
+    height: 'auto !important',
+  },
   height: 'fit-content',
   width: 'fit-content',
   margin: '1rem',
   position: 'fixed',
   bottom: 0,
   right: 0,
-  border: '2px solid',
-  borderColor: 'ActiveBorder',
   borderRadius: '1rem',
-  overflow: 'clip',
+  overflow: 'hidden',
 })
 
 const MonitorBox = styled(Box)({

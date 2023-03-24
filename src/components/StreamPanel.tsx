@@ -1,46 +1,29 @@
-import {
-  ExpandMoreRounded,
-  LayersRounded,
-  LiveTvRounded,
-  StopRounded,
-  StreamRounded,
-  VideoSettingsRounded,
-} from '@mui/icons-material'
-import { TabContext, TabList, TabPanel } from '@mui/lab'
+import { LayersRounded, StopRounded, StreamRounded } from '@mui/icons-material'
 import {
   Box,
-  Fade,
-  FormHelperText,
   FormLabel,
   Grow,
   IconButton,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Paper,
   SwipeableDrawer,
-  Tab,
-  ToggleButton,
-  ToggleButtonGroup,
-  formHelperTextClasses,
   paperClasses,
 } from '@mui/material'
-import { ReactEventHandler, SyntheticEvent, memo, useState } from 'react'
+import { QNConnectionState as QState } from 'qnweb-rtc'
+import { lazy, memo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useParams } from 'react-router'
 
+import { getRtmpUrl } from '../api'
 import {
   changeMode,
   startLive,
   stopLive,
   updateComposedConfig,
 } from '../features/streamSlice'
-import { useAppDispatch, useAppSelector } from '../store'
-import { getRtmpUrl } from '../api'
-import { ComposedConfigForm } from './ConfigForm'
-import { QNConnectionState as QState } from 'qnweb-rtc'
-import { isMobile } from '../utils'
 import { useTopRightBox } from '../pages/layout'
-import { createPortal } from 'react-dom'
+import { useAppDispatch, useAppSelector } from '../store'
+import { isMobile } from '../utils'
+const ComposedConfigForm = lazy(() => import('./ConfigForm'))
 
 const StreamingControl = memo(() => {
   const boxRef = useTopRightBox()

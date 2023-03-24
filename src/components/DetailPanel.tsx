@@ -1,12 +1,5 @@
-import { ContentCopyRounded, DragHandleRounded } from '@mui/icons-material'
-import {
-  Box,
-  Divider,
-  IconButton,
-  Tooltip,
-  Typography,
-  useTheme,
-} from '@mui/material'
+import { DragHandleRounded } from '@mui/icons-material'
+import { Box, Divider, Typography, useTheme } from '@mui/material'
 import {
   QNLocalAudioTrack,
   QNLocalAudioTrackStats,
@@ -18,7 +11,6 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
-import { client } from '../api'
 import { useAppSelector } from '../store'
 
 export type DetailPanelProps = {
@@ -29,7 +21,6 @@ const stateText = {
   [QState.CONNECTED]: '已连接',
   [QState.CONNECTING]: '连接中',
   [QState.DISCONNECTED]: '未连接',
-  [QState.CONNECTED]: '已连接',
   [QState.RECONNECTED]: '已重连',
   [QState.RECONNECTING]: '重连中',
 }

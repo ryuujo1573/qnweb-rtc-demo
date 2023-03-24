@@ -6,7 +6,7 @@ import {
   svgIconClasses,
   useTheme,
 } from '@mui/material'
-import { memo, useEffect, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 
 import { client } from '../api'
 import { isAudioTrack, isVideoTrack, stringToColor } from '../utils'
@@ -52,23 +52,21 @@ const UserBox = memo(({ user, sx }: UserBoxProps) => {
   }, [])
 
   const theme = useTheme()
-  const [audioTarget, setAudioTarget] = useState<HTMLDivElement | null>(null)
+  const boxRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (audioTarget) {
+    if (boxRef.current) {
       if (audioTracks) {
-        const subscribed = audioTracks.filter((t) => t.isSubscribed())
-        subscribed.forEach((t) => t.play(audioTarget))
-        // this should execute only once
-        // track.play introduces side effects (audio elements),
-        // which will be cleaned with DOM removal
+        for (const t of audioTracks) {
+          t.play(boxRef.current)
+        }
       }
     }
-  }, [audioTarget])
+  }, [boxRef.current])
 
   return (
     <Box
-      ref={setAudioTarget}
+      ref={boxRef}
       sx={{
         display: 'flex',
         position: 'relative',

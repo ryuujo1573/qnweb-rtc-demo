@@ -25,67 +25,100 @@ export function isCameraPreset(str: string): str is CameraPreset {
 type PrimaryColors = Omit<typeof import('@mui/material/colors'), 'common'>
 
 export interface Settings {
-  themeCode: ThemeCode
-  primaryColor: keyof PrimaryColors
   appId: string
-  facingMode: FacingMode
-  mirror: boolean
-  liveStreamBaseUrl: string
-  sei?: string
-  playbacks: PlainDeviceInfo[]
-  microphones: PlainDeviceInfo[]
-  cameras: PlainDeviceInfo[]
+  cameraMuted?: boolean
+  cameraPreset: CameraPreset
   defaultCamera?: string
   defaultMicrophone?: string
   defaultPlayback?: string
-  cameraPreset: CameraPreset
-  cameraMuted?: boolean
-  screenPreset: ScreenPreset
+  facingMode: FacingMode
+  liveStreamBaseUrl: string
   microphoneMuted?: boolean
+  mirror: boolean
   neverPrompt: boolean
+  primaryColor: keyof PrimaryColors
+  screenPreset: ScreenPreset
+  sei?: string
   showProfile: boolean
+  themeCode: ThemeCode
+  // non-persistent value
+  playbacks: PlainDeviceInfo[]
+  microphones: PlainDeviceInfo[]
+  cameras: PlainDeviceInfo[]
 }
 
 const storageKeys = {
-  themeCode: 'color-theme',
-  primaryColor: 'primary',
   appId: 'appid',
-  facingMode: 'facing-mode',
-  mirror: 'mirror',
-  liveStreamBaseUrl: 'livestream-url',
-  sei: 'sei',
-  cameraPreset: 'camera-preset',
   cameraMuted: 'camera-muted',
-  microphoneMuted: 'microphone-muted',
+  cameraPreset: 'camera-preset',
   defaultCamera: 'default-camera',
   defaultMicrophone: 'default-microphone',
-  defaultPlayback: 'microphone',
+  defaultPlayback: 'default-playback',
+  facingMode: 'facing-mode',
+  liveStreamBaseUrl: 'livestream-url',
+  microphoneMuted: 'microphone-muted',
+  mirror: 'mirror',
   neverPrompt: 'never-prompt',
+  primaryColor: 'primary',
+  screenPreset: 'screen-preset',
+  sei: 'sei',
   showProfile: 'show-profile',
+  themeCode: 'color-theme',
 } as const // satisfies Partial<Record<keyof Settings, string>>
 
-const initialState: Settings = {
-  themeCode:
-    (localStorage.getItem(storageKeys.themeCode) as ThemeCode) ?? 'dark',
+const storage: {
+  readonly [key in typeof keys[number]]?: Settings[key]
+} = {}
+
+const keys = [
+  'appId',
+  'cameraMuted',
+  'cameraPreset',
+  'defaultCamera',
+  'defaultMicrophone',
+  'defaultPlayback',
+  'facingMode',
+  'liveStreamBaseUrl',
+  'microphoneMuted',
+  'mirror',
+  'neverPrompt',
+  'primaryColor',
+  'screenPreset',
+  'sei',
+  'showProfile',
+  'themeCode',
+] as const
+
+function isStorageKey(key: string): key is typeof keys[number] {
+  return keys.includes(key as any)
+}
+
+for (const key of keys) {
+  Object.defineProperty(storage, key, {
+    get() {
+      const item = localStorage.getItem(storageKeys[key])
+      return item !== null ? JSON.parse(item) : undefined
+    },
+  })
+}
+
+const defaultSettings: Settings = {
+  themeCode: 'dark',
   primaryColor: 'lightBlue',
-  appId: localStorage.getItem(storageKeys.appId) ?? 'd8lk7l4ed',
-  facingMode:
-    (localStorage.getItem(storageKeys.facingMode) as FacingMode) ?? 'user',
-  mirror: localStorage.getItem(storageKeys.mirror) == 'true' ?? false,
-  liveStreamBaseUrl:
-    localStorage.getItem(storageKeys.liveStreamBaseUrl) ??
-    'rtmp://pili-publish.qnsdk.com/sdk-live',
+  appId: 'd8lk7l4ed',
+  facingMode: 'user',
+  mirror: false,
+  liveStreamBaseUrl: 'rtmp://pili-publish.qnsdk.com/sdk-live',
   sei: 'timestamp: ${ts}',
   playbacks: [],
   microphones: [],
   cameras: [],
   cameraPreset: '720p',
   screenPreset: '1080p',
-  cameraMuted: localStorage.getItem(storageKeys.cameraMuted) == 'true' ?? false,
-  microphoneMuted:
-    localStorage.getItem(storageKeys.microphoneMuted) == 'true' ?? false,
-  neverPrompt: localStorage.getItem(storageKeys.neverPrompt) == 'true' ?? false,
-  showProfile: localStorage.getItem(storageKeys.showProfile) == 'true' ?? false,
+  cameraMuted: false,
+  microphoneMuted: false,
+  neverPrompt: false,
+  showProfile: false,
 }
 
 export const checkDevices = createAsyncThunk(
@@ -98,7 +131,10 @@ export const checkDevices = createAsyncThunk(
 
 export const settingSlice = createSlice({
   name: 'settings',
-  initialState,
+  initialState: {
+    ...defaultSettings,
+    ...storage,
+  },
   reducers: {
     changeTheme: (state, { payload }: PayloadAction<ThemeCode>) => {
       state.themeCode = payload
@@ -112,9 +148,16 @@ export const settingSlice = createSlice({
         ...payload,
       }
     },
-    save: (state, { payload }: PayloadAction<Partial<Settings>>) => {
-      for (const key in payload) {
-        if (key in storageKeys) {
+    save: (
+      state,
+      {
+        payload,
+      }: PayloadAction<
+        Omit<Partial<Settings>, 'cameras' | 'microphones' | 'playbacks'>
+      >
+    ) => {
+      for (const key of Object.keys(payload)) {
+        if (isStorageKey(key)) {
           localStorage.setItem(
             storageKeys[<keyof typeof storageKeys>key],
             JSON.stringify(payload[<keyof typeof payload>key])

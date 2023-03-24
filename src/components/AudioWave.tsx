@@ -1,3 +1,4 @@
+import { useTheme } from '@mui/material'
 import { QNLocalAudioTrack, QNRemoteAudioTrack } from 'qnweb-rtc'
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 
@@ -10,6 +11,7 @@ export type AudioWaveProps = {
 
 const AudioWave = memo(({ track, ...canvasProps }: AudioWaveProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const theme = useTheme()
   const [context, setContext] = useState<CanvasRenderingContext2D>()
   // note: this defaults to set dimensions as positioning parent
   // e.g.  A parent with `position: relative`
@@ -17,7 +19,7 @@ const AudioWave = memo(({ track, ...canvasProps }: AudioWaveProps) => {
 
   const frameRequestCallback = useCallback(() => {
     if (!context) return
-    const color = 'lightblue'
+    const color = theme.palette.grey[800]
     const [width, height] = size!
 
     // 时域/频域

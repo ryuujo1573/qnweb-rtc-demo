@@ -45,16 +45,26 @@ const VideoBox = memo(
                 dispatch(pinTrack(videoTrack.trackID!))
               }
             }
-            videoTrack.mediaElement.ondblclick = pinCurrentTrack
 
-            let touched = false
+            let firstTouch = true
+            let lastPosition = [0, 0]
             const maxInterval = 300
-            videoTrack.mediaElement.ontouchstart = (e) => {
-              if (touched) {
-                pinCurrentTrack()
+            const maxDelta = 10
+            videoTrack.mediaElement.onpointerdown = (e) => {
+              if (firstTouch) {
+                firstTouch = false
+
+                lastPosition = [e.screenX, e.screenY]
+                setTimeout(() => (firstTouch = true), maxInterval)
               } else {
-                touched = true
-                setTimeout(() => (touched = false), maxInterval)
+                const [x0, y0] = lastPosition
+                if (
+                  Math.abs(e.screenX - x0) < maxDelta &&
+                  Math.abs(e.screenY - y0) < maxDelta
+                ) {
+                  console.log('#double tap')
+                  pinCurrentTrack()
+                }
               }
             }
           }

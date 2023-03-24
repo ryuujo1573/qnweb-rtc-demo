@@ -9,25 +9,17 @@ const initialState: IdentityState = {
   userId: localStorage.getItem('userid'),
 }
 
-const updateUserIdReducer = function (
-  state: { userId: string | null },
-  { payload: userId }: PayloadAction<string>
-) {
-  if (checkUserId(userId) == false) {
-    return
-  }
-  state.userId = userId
-}
-
 export const identitySlice = createSlice({
   name: 'identity',
   initialState,
   reducers: {
-    updateUserId: (state, action) => {
-      updateUserIdReducer(state, action)
+    updateUserId: (state, { payload: userId }: PayloadAction<string>) => {
+      state.userId = userId
       state.userId && localStorage.setItem('userid', state.userId)
     },
-    updateUserIdTemp: updateUserIdReducer,
+    updateUserIdTemp: (state, { payload: userId }: PayloadAction<string>) => {
+      state.userId = userId
+    },
   },
 })
 

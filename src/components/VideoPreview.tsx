@@ -1,40 +1,45 @@
-import { Box, BoxProps, Skeleton, styled } from '@mui/material'
-import QNRTC, { QNLocalVideoTrack } from 'qnweb-rtc'
+import { Box, BoxProps, Skeleton } from '@mui/material'
+import QNRTC, { QNCameraVideoTrack, QNLocalVideoTrack } from 'qnweb-rtc'
 import { useEffect, useRef, useState } from 'react'
 import { useAppSelector } from '../store'
 
-export interface VideoPreviewProps {
-  shouldPlay: boolean
-}
+export interface VideoPreviewProps {}
 
-const VideoPreview = ({
-  shouldPlay,
-  ...boxProps
-}: VideoPreviewProps & BoxProps) => {
+const VideoPreview = ({ ...boxProps }: VideoPreviewProps & BoxProps) => {
   const { mirror, facingMode, defaultCamera, cameraPreset } = useAppSelector(
     (s) => s.settings
   )
+
   const boxRef = useRef<HTMLDivElement>()
   const [track, setTrack] = useState<QNLocalVideoTrack>()
   const showSkeleton = !track
 
   useEffect(() => {
-    console.log('#shouldPlay', shouldPlay)
-    if (shouldPlay) {
-      QNRTC.createCameraVideoTrack({
-        facingMode,
-        cameraId: defaultCamera,
-        encoderConfig: cameraPreset,
-      }).then(setTrack)
+    // console.log('# create')
+    let track: QNCameraVideoTrack | undefined
 
-      return () => {
-        setTrack((track) => {
-          track?.destroy()
-          return undefined
-        })
-      }
+    QNRTC.createCameraVideoTrack({
+      facingMode: defaultCamera ? undefined : facingMode,
+      cameraId: defaultCamera,
+      encoderConfig: cameraPreset,
+    }).then((newTrack) => {
+      track = newTrack
+      setTrack((oldTrack) => {
+        // if track is recreated multiple times,
+        // destroy the old, and remain the new.
+        if (oldTrack) {
+          // console.log('# inner clear')
+          oldTrack.destroy()
+        }
+        return newTrack
+      })
+    })
+
+    return function cleanEffect() {
+      // console.log('# clear', track)
+      track?.destroy()
     }
-  }, [shouldPlay, facingMode, defaultCamera, cameraPreset])
+  }, [facingMode, defaultCamera, cameraPreset])
 
   useEffect(() => {
     if (boxRef.current) {
@@ -48,8 +53,8 @@ const VideoPreview = ({
       ref={boxRef}
       sx={{
         position: 'relative',
-        maxWidth: '328px',
-        minHeight: '180px',
+        // maxHeight: '300px',
+        height: 'fit-content',
       }}
       {...boxProps}
     >

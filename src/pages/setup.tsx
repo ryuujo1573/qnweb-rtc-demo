@@ -52,7 +52,7 @@ export default function SetupPage() {
         }}
         onClick={() => dispatch(updateUserId('admin'))}
       >
-        {'演示 admin 账号?'}
+        使用 admin ?
       </Link>
       <input type="submit" hidden />
     </form>

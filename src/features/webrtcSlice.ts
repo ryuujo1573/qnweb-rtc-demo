@@ -32,7 +32,6 @@ type PendingAction = ReturnType<GenericAsyncThunk['pending']>
 type RejectedAction = ReturnType<GenericAsyncThunk['rejected']>
 type FulfilledAction = ReturnType<GenericAsyncThunk['fulfilled']>
 
-let localSerialId = 0
 export const createTrack = createAsyncThunk<
   WebRTCState['localTrack'],
   TrackTag,
@@ -59,6 +58,8 @@ export const createTrack = createAsyncThunk<
       tracks.push(
         await QNRTC.createMicrophoneAudioTrack({
           tag,
+          microphoneId: defaultMicrophone,
+          encoderConfig: 'HIGH',
         })
       )
       break
@@ -93,9 +94,6 @@ export const createTrack = createAsyncThunk<
       }
       break
     }
-    // case 'canvas':
-    //   track = QNRTC.createCanvasVideoTrack({tag: 'camera'})
-    //   break
     default:
       break
   }

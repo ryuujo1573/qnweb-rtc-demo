@@ -1,4 +1,4 @@
-import { Check } from '@mui/icons-material'
+import { CheckRounded } from '@mui/icons-material'
 import {
   List,
   ListItem,
@@ -37,7 +37,7 @@ export default function TooltipList<
         }}
       >
         <ListItemButton disableGutters>
-          <ListItemIcon>{selected ? <Check /> : undefined}</ListItemIcon>
+          <ListItemIcon>{selected ? <CheckRounded /> : undefined}</ListItemIcon>
           <ListItemText>{label}</ListItemText>
         </ListItemButton>
       </ListItem>
