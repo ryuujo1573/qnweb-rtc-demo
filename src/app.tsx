@@ -103,7 +103,7 @@ export const App = () => {
     <ThemeProvider theme={theme}>
       <CssBaseline enableColorScheme />
       <Snackbar
-        autoHideDuration={5000} // override when `auto..` specified in action
+        autoHideDuration={3000} // override when `auto..` specified in action
         anchorOrigin={{ horizontal: 'center', vertical: 'top' }}
         onClose={handleSnackClose}
         open={!!msg}
@@ -111,6 +111,9 @@ export const App = () => {
         {...(severity
           ? { children: <Alert severity={severity}>{msg}</Alert> }
           : { message: msg })}
+        sx={{
+          pointerEvents: 'none',
+        }}
       />
       <RouterProvider router={router} />
     </ThemeProvider>
