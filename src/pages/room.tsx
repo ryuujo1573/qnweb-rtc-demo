@@ -44,6 +44,7 @@ import { getRtmpUrl } from '../api'
 import {
   DetailPanel,
   OobePanel,
+  StrokeIcon,
   TooltipList,
   UserBox,
   VideoBox,
@@ -71,11 +72,13 @@ import { useAppDispatch, useAppSelector } from '../store'
 import {
   checkRoomId,
   checkUserId,
+  doubleClickHelper,
   isMobile,
   stringToColor,
   useDebounce,
 } from '../utils'
 import { useThrottle } from '../utils/hooks'
+import { success } from '../features/messageSlice'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -294,6 +297,9 @@ export default function RoomPage() {
             open
             onConfirm={(newSettings) => {
               setOobe(false)
+              setCamMuted(newSettings.cameraMuted)
+              setMicMuted(newSettings.microphoneMuted)
+
               if (newSettings.neverPrompt) {
                 dispatch(save(newSettings))
               } else {
@@ -355,8 +361,9 @@ export default function RoomPage() {
                 <span>
                   <IconButton
                     disabled={!connected}
-                    onClick={(e) => {
-                      navigator.clipboard.writeText(window.location.href)
+                    onClick={async (e) => {
+                      await navigator.clipboard.writeText(window.location.href)
+                      dispatch(success({ message: '房间链接复制成功' }))
                       e.stopPropagation()
                     }}
                   >
@@ -533,6 +540,7 @@ function RoomPage_S({
   if (!modules.current) {
     modules.current = [Pagination]
   }
+
   return (
     <Box height="100%">
       <Swiper pagination modules={modules.current}>
@@ -543,6 +551,9 @@ function RoomPage_S({
               sx={{
                 display: 'contents',
               }}
+              {...doubleClickHelper((e) => {
+                dispatch(unpinTrack())
+              })}
             ></Box>
             <Button
               sx={{
@@ -550,9 +561,9 @@ function RoomPage_S({
                 right: 0,
                 bottom: '60px',
                 margin: 1,
-                '& .stroke::after': {
-                  content: "'/'",
-                },
+                // '& .stroke::before': {
+                //   content: "url('data:image/svg+xml,)",
+                // },
               }}
               color="inherit"
               variant={pinnedTrackId ? 'text' : 'outlined'}
@@ -560,7 +571,9 @@ function RoomPage_S({
                 dispatch(unpinTrack())
               }}
             >
-              <PushPinRounded className={pinnedTrackId && 'stroke'} />
+              <StrokeIcon stroked={!!pinnedTrackId}>
+                <PushPinRounded />
+              </StrokeIcon>
             </Button>
           </SwiperSlide>
         )}

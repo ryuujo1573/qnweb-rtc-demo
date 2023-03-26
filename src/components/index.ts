@@ -8,6 +8,7 @@ import VideoBox from './VideoBox'
 import VideoPlayer from './VideoPlayer'
 import VideoPreview from './VideoPreview'
 import OobePanel from './OobePanel'
+import StrokeIcon from './StrokeIcon'
 
 export {
   AudioWave,
@@ -20,4 +21,5 @@ export {
   VideoPlayer,
   VideoPreview,
   OobePanel,
+  StrokeIcon,
 }

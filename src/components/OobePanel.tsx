@@ -138,6 +138,7 @@ const OobePanel = memo(function OobePanel({
             userSelect: 'none',
           },
         }}
+        onClick={(e) => e.stopPropagation()}
       >
         <Typography variant="subtitle1">设备检测</Typography>
         <Box

@@ -2,6 +2,7 @@ import { getPassedTimeDesc } from './datetime'
 import { useDebounce } from './hooks'
 import { stringToColor } from './avatar'
 import { isAudioTrack, isVideoTrack } from './typing'
+import { PointerEvent } from 'react'
 
 export {
   getPassedTimeDesc,
@@ -63,4 +64,30 @@ export function valuable<T>(t: T): t is Exclude<T, null | undefined> {
 
 export function isMobile() {
   return window.innerWidth < 500 || /mobile|phone/i.test(navigator.userAgent)
+}
+
+let firstTouch = true
+let lastPosition = [0, 0]
+const maxInterval = 300
+const maxDelta = 10
+export function doubleClickHelper<T>(fn: (e: PointerEvent<T>) => void) {
+  return {
+    onPointerDown: function (e: PointerEvent<T>) {
+      if (firstTouch) {
+        console.log('first')
+        firstTouch = false
+
+        lastPosition = [e.screenX, e.screenY]
+        setTimeout(() => (firstTouch = true), maxInterval)
+      } else {
+        const [x0, y0] = lastPosition
+        if (
+          Math.abs(e.screenX - x0) < maxDelta &&
+          Math.abs(e.screenY - y0) < maxDelta
+        ) {
+          fn(e)
+        }
+      }
+    },
+  }
 }

@@ -62,7 +62,7 @@ const UserBox = memo(({ user, sx }: UserBoxProps) => {
         }
       }
     }
-  }, [boxRef.current])
+  }, [boxRef.current, audioTracks])
 
   return (
     <Box
