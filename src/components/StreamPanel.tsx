@@ -120,9 +120,6 @@ const StreamingControl = memo(() => {
                 // paddingInline: '5%',
                 display: 'flex',
                 flexDirection: 'column',
-                [`& > *:nth-child(2)`]: {
-                  margin: '.5rem auto',
-                },
               },
             }}
           >
@@ -136,7 +133,13 @@ const StreamingControl = memo(() => {
                 borderRadius: 1,
               }}
             />
-            <FormLabel>合流设置</FormLabel>
+            <FormLabel
+              sx={{
+                margin: '.5rem auto',
+              }}
+            >
+              合流设置
+            </FormLabel>
             <ComposedConfigForm
               onValidSubmit={(data) => {
                 dispatch(updateComposedConfig(data))

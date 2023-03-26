@@ -20,7 +20,6 @@ import {
   paperClasses,
   svgIconClasses,
   SwipeableDrawer,
-  Switch,
   TextField,
   ToggleButton,
   Typography,

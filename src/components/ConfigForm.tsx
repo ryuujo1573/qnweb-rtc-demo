@@ -215,17 +215,17 @@ const ComposedConfigForm = forwardRef<
     criteriaMode: 'all',
   })
 
-  const setupField = function <TName extends Parameters<typeof register>[0]>(
-    name: TName,
-    option?: Parameters<typeof register<TName>>[1]
-  ) {
-    const error: FieldError | undefined = get(errors, name)
-    return {
-      ...register(name, option),
-      error: !!error,
-      helperText: error?.message,
-    }
-  }
+  // const setupField = function <TName extends Parameters<typeof register>[0]>(
+  //   name: TName,
+  //   option?: Parameters<typeof register<TName>>[1]
+  // ) {
+  //   const error: FieldError | undefined = get(errors, name)
+  //   return {
+  //     ...register(name, option),
+  //     error: !!error,
+  //     helperText: error?.message,
+  //   }
+  // }
 
   const {
     fields: transcodingTracks,
@@ -324,7 +324,6 @@ const ComposedConfigForm = forwardRef<
                 type="number"
                 fullWidth
                 variant="outlined"
-                helperText={errors.maxBitrate?.message}
                 {...register('maxBitrate', {
                   // pattern: /\d+/,
                   value: config.maxBitrate,
@@ -339,6 +338,7 @@ const ComposedConfigForm = forwardRef<
                   },
                 })}
                 error={!!errors.maxBitrate}
+                helperText={errors.maxBitrate?.message}
               />
               <TextField
                 label="最低码率 (Kbps)"
@@ -357,12 +357,13 @@ const ComposedConfigForm = forwardRef<
                 fullWidth
                 defaultValue={config.minBitrate?.toString()}
                 error={!!errors.minBitrate}
+                helperText={errors.minBitrate?.message}
                 variant="outlined"
               />
               <TextField
                 label="码率 (Kbps)"
                 type="number"
-                {...setupField('bitrate', {
+                {...register('bitrate', {
                   valueAsNumber: true,
                   max: {
                     message: `演示码率上限为 ${maxBitrate} Kbps`,
@@ -376,12 +377,13 @@ const ComposedConfigForm = forwardRef<
                 fullWidth
                 defaultValue={config.bitrate?.toString()}
                 error={!!errors.bitrate}
+                helperText={errors.bitrate?.message}
                 variant="outlined"
               />
               <TextField
                 label="帧率 / FPS"
                 type="number"
-                {...setupField('videoFrameRate', {
+                {...register('videoFrameRate', {
                   required: true,
                   valueAsNumber: true,
                   validate: {
@@ -391,12 +393,14 @@ const ComposedConfigForm = forwardRef<
                 })}
                 fullWidth
                 defaultValue={config.videoFrameRate?.toString() ?? '30'}
+                error={!!errors.videoFrameRate}
+                helperText={errors.videoFrameRate?.message}
                 variant="outlined"
               />
               <TextField
                 label="宽度"
                 type="number"
-                {...setupField('width', {
+                {...register('width', {
                   valueAsNumber: true,
                   min: 100,
                   max: 4096,
@@ -405,12 +409,13 @@ const ComposedConfigForm = forwardRef<
                 fullWidth
                 defaultValue={config.width?.toString() ?? '1280'}
                 error={!!errors.width}
+                helperText={errors.width?.message}
                 variant="outlined"
               />
               <TextField
                 label="高度"
                 type="number"
-                {...setupField('height', {
+                {...register('height', {
                   valueAsNumber: true,
                   min: 100,
                   max: 4096,
@@ -419,15 +424,17 @@ const ComposedConfigForm = forwardRef<
                 fullWidth
                 defaultValue={config.height?.toString() ?? '720'}
                 error={!!errors.height}
+                helperText={errors.height?.message}
                 variant="outlined"
               />
               <TextField
                 label="渲染模式"
-                {...setupField('renderMode', { required: true })}
+                {...register('renderMode', { required: true })}
                 select
                 fullWidth
                 defaultValue={config.renderMode ?? QNRenderMode.ASPECT_FIT}
                 error={!!errors.renderMode}
+                helperText={errors.renderMode?.message}
                 variant="outlined"
               >
                 {stretchModeList.map(([option, helperText]) => (
@@ -441,7 +448,7 @@ const ComposedConfigForm = forwardRef<
                   label="保持最后帧"
                   control={
                     <Checkbox
-                      {...setupField('holdLastFrame')}
+                      {...register('holdLastFrame')}
                       defaultChecked={config.holdLastFrame}
                     />
                   }
@@ -451,10 +458,11 @@ const ComposedConfigForm = forwardRef<
                 <TextField
                   label="背景地址"
                   type="url"
-                  {...setupField('background.url')}
+                  {...register('background.url')}
                   fullWidth
                   defaultValue={config.background?.url}
                   error={!!errors.background?.url}
+                  helperText={errors.background?.url?.message}
                   variant="outlined"
                 />
               </Grid>
@@ -462,10 +470,11 @@ const ComposedConfigForm = forwardRef<
                 <TextField
                   label="背景宽度"
                   type="number"
-                  {...setupField('background.width', { valueAsNumber: true })}
+                  {...register('background.width', { valueAsNumber: true })}
                   fullWidth
                   defaultValue={config.background?.width.toString()}
                   error={!!errors.background?.width}
+                  helperText={errors.background?.width?.message}
                   variant="outlined"
                 />
               </Grid>
@@ -473,10 +482,11 @@ const ComposedConfigForm = forwardRef<
                 <TextField
                   label="背景高度"
                   type="number"
-                  {...setupField('background.height', { valueAsNumber: true })}
+                  {...register('background.height', { valueAsNumber: true })}
                   fullWidth
                   defaultValue={config.background?.height.toString()}
                   error={!!errors.background?.height}
+                  helperText={errors.background?.height?.message}
                   variant="outlined"
                 />
               </Grid>
@@ -484,10 +494,11 @@ const ComposedConfigForm = forwardRef<
                 <TextField
                   label="背景x轴距离"
                   type="number"
-                  {...setupField('background.x', { valueAsNumber: true })}
+                  {...register('background.x', { valueAsNumber: true })}
                   fullWidth
                   defaultValue={config.background?.x.toString()}
                   error={!!errors.background?.x}
+                  helperText={errors.background?.x?.message}
                   variant="outlined"
                 />
               </Grid>
@@ -495,10 +506,11 @@ const ComposedConfigForm = forwardRef<
                 <TextField
                   label="背景y轴距离"
                   type="number"
-                  {...setupField('background.y', { valueAsNumber: true })}
+                  {...register('background.y', { valueAsNumber: true })}
                   fullWidth
                   defaultValue={config.background?.y.toString()}
                   error={!!errors.background?.y}
+                  helperText={errors.background?.y?.message}
                   variant="outlined"
                 />
               </Grid>
@@ -508,8 +520,9 @@ const ComposedConfigForm = forwardRef<
                     <TextField
                       label="水印地址"
                       type="url"
-                      {...setupField(`watermarks.${index}.url` as const)}
+                      {...register(`watermarks.${index}.url` as const)}
                       error={!!errors.watermarks?.[index]?.url}
+                      helperText={errors.watermarks?.[index]?.url?.message}
                       fullWidth
                       variant="outlined"
                     />
@@ -518,10 +531,11 @@ const ComposedConfigForm = forwardRef<
                     <TextField
                       label="水印高度"
                       type="number"
-                      {...setupField(`watermarks.${index}.height` as const, {
+                      {...register(`watermarks.${index}.height` as const, {
                         valueAsNumber: true,
                       })}
                       error={!!errors.watermarks?.[index]?.height}
+                      helperText={errors.watermarks?.[index]?.height?.message}
                       fullWidth
                       variant="outlined"
                     />
@@ -530,10 +544,11 @@ const ComposedConfigForm = forwardRef<
                     <TextField
                       label="水印宽度"
                       type="number"
-                      {...setupField(`watermarks.${index}.width` as const, {
+                      {...register(`watermarks.${index}.width` as const, {
                         valueAsNumber: true,
                       })}
                       error={!!errors.watermarks?.[index]?.width}
+                      helperText={errors.watermarks?.[index]?.width?.message}
                       fullWidth
                       variant="outlined"
                     />
@@ -542,10 +557,11 @@ const ComposedConfigForm = forwardRef<
                     <TextField
                       label="水印x轴距离"
                       type="number"
-                      {...setupField(`watermarks.${index}.x` as const, {
+                      {...register(`watermarks.${index}.x` as const, {
                         valueAsNumber: true,
                       })}
                       error={!!errors.watermarks?.[index]?.x}
+                      helperText={errors.watermarks?.[index]?.x?.message}
                       fullWidth
                       variant="outlined"
                     />
@@ -554,10 +570,11 @@ const ComposedConfigForm = forwardRef<
                     <TextField
                       label="水印y轴距离"
                       type="number"
-                      {...setupField(`watermarks.${index}.y` as const, {
+                      {...register(`watermarks.${index}.y` as const, {
                         valueAsNumber: true,
                       })}
                       error={!!errors.watermarks?.[index]?.y}
+                      helperText={errors.watermarks?.[index]?.y?.message}
                       fullWidth
                       variant="outlined"
                     />
@@ -711,13 +728,16 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           label="x轴坐标"
                           type="number"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.x` as const,
                             {
                               valueAsNumber: true,
                             }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.x}
+                          helperText={
+                            errors.transcodingTracks?.[index]?.x?.message
+                          }
                           // size="small"
                           fullWidth
                           variant="outlined"
@@ -725,13 +745,16 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           label="y轴坐标"
                           type="number"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.y` as const,
                             {
                               valueAsNumber: true,
                             }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.y}
+                          helperText={
+                            errors.transcodingTracks?.[index]?.y?.message
+                          }
                           // size="small"
                           fullWidth
                           variant="outlined"
@@ -739,13 +762,16 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           label="层级"
                           type="number"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.zOrder` as const,
                             {
                               valueAsNumber: true,
                             }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.zOrder}
+                          helperText={
+                            errors.transcodingTracks?.[index]?.zOrder?.message
+                          }
                           // size="small"
                           fullWidth
                           variant="outlined"
@@ -753,13 +779,16 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           label="宽"
                           type="number"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.width` as const,
                             {
                               valueAsNumber: true,
                             }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.width}
+                          helperText={
+                            errors.transcodingTracks?.[index]?.width?.message
+                          }
                           // size="small"
                           fullWidth
                           variant="outlined"
@@ -767,13 +796,16 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           label="高"
                           type="number"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.height` as const,
                             {
                               valueAsNumber: true,
                             }
                           )}
                           error={!!errors.transcodingTracks?.[index]?.height}
+                          helperText={
+                            errors.transcodingTracks?.[index]?.height?.message
+                          }
                           // size="small"
                           fullWidth
                           variant="outlined"
@@ -781,11 +813,15 @@ const ComposedConfigForm = forwardRef<
                         <TextField
                           select
                           label="渲染模式"
-                          {...setupField(
+                          {...register(
                             `transcodingTracks.${index}.renderMode` as const
                           )}
                           error={
                             !!errors.transcodingTracks?.[index]?.renderMode
+                          }
+                          helperText={
+                            errors.transcodingTracks?.[index]?.renderMode
+                              ?.message
                           }
                           // size="small"
                           fullWidth
