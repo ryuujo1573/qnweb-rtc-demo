@@ -19,7 +19,7 @@ const VideoPreview = ({ ...boxProps }: VideoPreviewProps & BoxProps) => {
     let track: QNCameraVideoTrack | undefined
 
     QNRTC.createCameraVideoTrack({
-      facingMode: defaultCamera ? undefined : facingMode,
+      facingMode: undefined,
       cameraId: defaultCamera,
       encoderConfig: cameraPreset,
     }).then((newTrack) => {

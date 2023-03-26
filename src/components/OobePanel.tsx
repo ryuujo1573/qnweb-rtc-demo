@@ -100,7 +100,7 @@ const OobePanel = memo(function OobePanel({
     if (testing.video) {
       QNRTC.createCameraVideoTrack({
         cameraId,
-        facingMode,
+        facingMode: undefined,
         encoderConfig: cameraPreset,
       }).then(setVideoTrack)
     }

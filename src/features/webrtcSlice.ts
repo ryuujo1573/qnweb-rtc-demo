@@ -70,7 +70,7 @@ export const createTrack = createAsyncThunk<
           tag,
           cameraId: defaultCamera,
           encoderConfig: cameraPreset,
-          facingMode,
+          facingMode: undefined,
         })
       )
       break
