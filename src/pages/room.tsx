@@ -518,14 +518,15 @@ function RoomPage_S({
 
   const parts: RemoteUser[][] = []
 
-  ;[
-    ...users,
-    ...new Array(11).fill(0).map((_, i) => ({
-      userID: `C${i}eeper`,
-      state: QState.CONNECTED,
-      trackIds: [],
-    })),
-  ].forEach((_, i, array) => {
+  // ;[
+  //   ...users,
+  //   ...new Array(11).fill(0).map((_, i) => ({
+  //     userID: `C${i}eeper`,
+  //     state: QState.CONNECTED,
+  //     trackIds: [],
+  //   })),
+  // ]
+  users.forEach((_, i, array) => {
     const n = 4
     // truncate digits using bitwise ops
     const period = (i / n) >> 0
