@@ -161,7 +161,7 @@ export default function SetupPage() {
             width: '300px',
             height: '85px',
             bgcolor: theme.palette.primary.main,
-            WebkitMaskImage: 'url(src/qiniu.svg)',
+            maskImage: 'url("qiniu.svg")',
           }}
           className="logo"
         />
