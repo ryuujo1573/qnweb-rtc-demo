@@ -91,10 +91,6 @@ export default function Layout() {
       setDrawerOpen(toBe == 'on')
     }
 
-  const buildDate = new Date(
-    parseInt(import.meta.env.VITE_APP_BUILD_TIME) * 1000
-  )
-
   const topRightBoxRef = useRef<HTMLDivElement>()
 
   const handleModifyId = (e: React.KeyboardEvent | React.MouseEvent) => {
@@ -402,15 +398,15 @@ export default function Layout() {
           </SectionFragment>
           <SectionFragment title="关于">
             <Typography variant="body2" textAlign="left">
-              DEMO VERSION:{' '}
+              DEMO VERSION:&nbsp;
               <b>
-                {import.meta.env.VITE_APP_VERSION}:{' '}
+                {import.meta.env.VITE_APP_VERSION}:&nbsp;
                 {import.meta.env.VITE_APP_LATEST_COMMIT_HASH}
               </b>
               <br />
               SDK VERSION: <b>{QNRTC.VERSION}</b>
               <br />
-              BUILD TIME: <b>{buildDate.toLocaleString()}</b> (
+              BUILD TIME: <b>{buildDate.toLocaleString('zh-Hans-CN')}</b> (
               {getPassedTimeDesc(buildDate)})
             </Typography>
             <Link href="https://www.qiniu.com/products/rtn" variant="body2">
@@ -422,3 +418,5 @@ export default function Layout() {
     </Suspense>
   )
 }
+
+const buildDate = new Date(parseInt(import.meta.env.VITE_APP_BUILD_TIME) * 1000)

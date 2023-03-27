@@ -1,13 +1,13 @@
 {
   "name": "qnrtc-web-demo",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "author": "ryuujo1573 <me@ryuujo.com>",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite",
-    "build": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) tsc && vite build",
-    "preview": "VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite preview"
+    "build": "tsc && VITE_APP_BUILD_TIME=$(date +%s) VITE_APP_LATEST_COMMIT_HASH=$(git rev-parse --short HEAD) vite build",
+    "preview": "pnpm build && vite preview"
   },
   "dependencies": {
     "@emotion/react": "^11.10.6",

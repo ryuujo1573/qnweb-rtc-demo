@@ -1,14 +1,13 @@
-
 /// get a description of passed time from given time.
 export function getPassedTimeDesc(then: Date) {
-  let seconds = new Date().getTime() - then.getTime()
+  let seconds = (new Date().getTime() - then.getTime()) / 1000
 
-  const min = 60 * 1000
-    , hour = min * 60
-    , day = hour * 24
-    , week = day * 7
-    , month = week * 4
-    , year = month * 12
+  const min = 60,
+    hour = min * 60,
+    day = hour * 24,
+    week = day * 7,
+    month = week * 4,
+    year = month * 12
 
   const direction = seconds > 0 ? '前' : '后'
 
