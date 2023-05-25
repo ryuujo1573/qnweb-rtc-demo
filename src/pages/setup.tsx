@@ -1,6 +1,6 @@
 import { Box, Button, Link, buttonClasses, useTheme } from '@mui/material'
 import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { decodeToken } from '../api'
 import { CustomTextField } from '../components'
@@ -9,6 +9,10 @@ import { error } from '../features/messageSlice'
 import { update } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkRoomId, checkUserId } from '../utils'
+
+interface Location {
+  state: { jumpto?: string }
+}
 
 export default function SetupPage() {
   const theme = useTheme()
@@ -19,6 +23,7 @@ export default function SetupPage() {
   const [connectById, setConnectById] = useState(true)
 
   const navigate = useNavigate()
+  const { state }: Location = useLocation()
 
   const [roomInputValue, setRoomInputValue] = useState('')
   const [newUserId, setNewUserId] = useState('')
@@ -31,6 +36,9 @@ export default function SetupPage() {
         e.preventDefault()
         if (newUserId && checkUserId(newUserId)) {
           dispatch(updateUserId(newUserId))
+          if (state?.jumpto) {
+            navigate(`/room/${state.jumpto}`)
+          }
         } else {
           dispatch(error({ message: '昵称限制为2~24个字符' }))
         }

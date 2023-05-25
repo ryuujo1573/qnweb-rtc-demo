@@ -100,10 +100,20 @@ export default function RoomPage() {
   }
   const { userId } = useAppSelector((s) => s.identity)
 
-  if (!roomId || !checkRoomId(roomId) || !userId || !checkUserId(userId)) {
-    navigate('/')
+  useEffect(() => {
+    if (!roomId || !checkRoomId(roomId)) {
+      console.log('oops! invalid roomId')
+      navigate('/')
+    } else if (!userId || !checkUserId(userId)) {
+      console.log('oops! no userId')
+      navigate(`/`, { state: { jumpto: roomId } })
+    }
+  }, [roomId, userId])
+
+  if (!roomId || !userId) {
     return <></>
   }
+
   const {
     appId,
     cameras,
