@@ -34,20 +34,19 @@ docker build -t $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION . --platform linux/am
 # push docker image
 docker push $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
 
-# [server side scripts]
-# pull - query - stop & run
-#   query result
-#     case "66f5629bd4b2 0.0.0.0:8085->80/tcp": docker stop + run
-#     case null: docker run
-#   when running a new instance, use former port if available,
-#     or use default port provided by `$DOCKER_PORT`.
+# use ssh to connect to server host and executing commands on server.
+# first, pull the latest image on server.
+# then, query the running containers which ancestor image is the image.
+#   if there is a running one, stop it and run a new one with the same port.
+#   if there is no running one, run a new one with default port from env,
+#     which removes itself when stopped.
+# here's the script:
 ssh $SERVER_HOST <<EOF
-docker pull $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION && \
-docker ps -a -q \
-  --filter ancestor=$DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION \
-  --format='{{.ID}}\n{{.Ports}}' \
-  | xargs -n2 bash -c '\
-    ! [[ \$0 = 'bash' ]] && echo "found \$0" && docker stop \$0 | xargs echo stopped\
-    ; echo "\${1:-:$DOCKER_PORT}" | grep -Po "(?<=:)[0-9]+" \
-    | xargs -I% docker run --rm -p %:80 -d $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION'
+  docker pull $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
+  if [[ \$(docker ps -q --filter ancestor=$DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION) --format='{{.ID}}\n{{.Ports}}' ]]; then
+    docker stop \$(docker ps -q --filter ancestor=$DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION --format='{{.ID}}')
+    docker run -d --rm --name qnweb-rtc-demo -p \$(docker port qnweb-rtc-demo | cut -d':' -f2):80 $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
+  else
+    docker run -d --rm --name qnweb-rtc-demo -p $DOCKER_PORT:80 $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
+  fi
 EOF
