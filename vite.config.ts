@@ -22,6 +22,18 @@ export default defineConfig({
     }),
     fullReload(['src/pages/room.tsx']),
     visualizer(),
+    {
+      name: 'singleHMR',
+      handleHotUpdate({ modules }) {
+        modules.map((m) => {
+          m.importedModules = new Set()
+          m.importers = new Set()
+        })
+
+        return modules
+      },
+    },
+
     // basicSsl(),
   ],
   resolve: {
