@@ -3,7 +3,7 @@ import { QNConnectionState } from 'qnweb-rtc'
 import { Pagination } from 'swiper'
 import { Swiper, SwiperSlide } from 'swiper/react'
 
-import { RemoteUser } from '../features/webrtcSlice'
+import type { RemoteUser } from '../features/roomSlice'
 import { stringToColor } from '../utils'
 
 import 'swiper/css'

@@ -13,7 +13,7 @@ import { isAudioTrack, isVideoTrack, stringToColor } from '../utils'
 import AudioWave from './AudioWave'
 import NetworkIcon from './NetworkIcon'
 import VideoBox from './VideoBox'
-import { RemoteUser, refStore } from '../features/webrtcSlice'
+import { RemoteUser, refStore } from '../features/roomSlice'
 
 type UserBoxProps = {
   user: RemoteUser
@@ -36,7 +36,7 @@ const UserBox = memo(({ user, sx }: UserBoxProps) => {
   const bgcolor = stringToColor(user.userID)
 
   const [networkQuality, setNetworkQuality] = useState(
-    client.getUserNetworkQuality(user.userID)
+    client.getUserNetworkQuality(user.userID),
   )
 
   const updateInterval = 3000

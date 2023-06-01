@@ -2,8 +2,9 @@ import { Box, BoxProps } from '@mui/material'
 import { QNLocalVideoTrack, QNRemoteVideoTrack } from 'qnweb-rtc'
 import { forwardRef, memo, useEffect, useRef } from 'react'
 
-import { useAppDispatch, useAppSelector } from '../store'
-import { pinTrack } from '../features/webrtcSlice'
+import { useAppDispatch } from '../store'
+import { pinTrack } from '../features/roomSlice'
+import { useRoomState, useSettings } from '../utils/hooks'
 
 export interface VideoBoxProps {
   videoTrack: QNRemoteVideoTrack | QNLocalVideoTrack | undefined
@@ -15,7 +16,9 @@ const VideoBox = memo(
     ({ videoTrack, sx, ...boxProps }, ref) => {
       const boxRef = useRef<HTMLDivElement>()
       const dispatch = useAppDispatch()
-      const pinnedTrackId = useAppSelector((s) => s.webrtc.pinnedTrackId)
+      const { pinnedTrackId } = useRoomState()
+      const { mirror } = useSettings()
+      document.body.classList.toggle('mirror', mirror)
 
       const pinned =
         videoTrack != undefined &&
@@ -96,8 +99,8 @@ const VideoBox = memo(
           {...boxProps}
         ></Box>
       )
-    }
-  )
+    },
+  ),
 )
 
 export default VideoBox

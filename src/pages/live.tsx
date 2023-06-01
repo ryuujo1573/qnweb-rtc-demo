@@ -4,16 +4,17 @@ import { VideoPlayer } from '../components'
 
 import { checkRoomId } from '../utils'
 import { listUsers } from '../api'
-import { useAppDispatch, useAppSelector } from '../store'
+import { useAppDispatch } from '../store'
 import { useEffect, useState } from 'react'
-import { joinRoom, setLivemode } from '../features/webrtcSlice'
+import { joinRoom, setLivemode } from '../features/roomSlice'
 import { message } from '../features/messageSlice'
+import { useSettings } from '../utils/hooks'
 
 export default function LiveRoomPage() {
   const navigate = useNavigate()
   const { liveId } = useParams()
   const dispatch = useAppDispatch()
-  const { appId } = useAppSelector((s) => s.settings)
+  const { appId } = useSettings()
   if (!liveId || !checkRoomId(liveId)) {
     navigate('/')
     return <></>

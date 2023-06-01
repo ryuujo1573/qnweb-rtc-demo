@@ -4,9 +4,9 @@ import {
   QNTranscodingLiveStreamingConfig,
 } from 'qnweb-rtc'
 import { client } from '../api'
-import { ThunkAPI } from '../store'
+import type { ThunkAPI } from '../store'
 import { delay, getRandomId } from '../utils'
-import { refStore } from './webrtcSlice'
+import { refStore } from './roomSlice'
 
 type QStream = {
   liveMode: LiveMode
@@ -43,7 +43,7 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
               liveMode: lastLiveMode,
               streamID: lastStreamId,
               replacing: true,
-            })
+            }),
           )
         }
       }
@@ -68,7 +68,7 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
       if (transcodingTracks) {
         await client.setTranscodingLiveStreamingTracks(
           streamID,
-          transcodingTracks
+          transcodingTracks,
         )
       }
     }
@@ -76,7 +76,7 @@ export const startLive = createAsyncThunk<QStream, string, ThunkAPI>(
     // return rejectWithValue('live state is not idle.')
 
     return { streamID, liveMode }
-  }
+  },
 )
 
 export const stopLive = createAsyncThunk(
@@ -92,7 +92,7 @@ export const stopLive = createAsyncThunk(
       await client.stopDirectLiveStreaming(streamID)
     }
     return specified.replacing
-  }
+  },
 )
 
 export type LiveMode = 'direct' | 'composed'
@@ -151,13 +151,13 @@ export const streamSlice = createSlice({
     },
     updateDirectConfig: (
       state,
-      { payload }: PayloadAction<StreamState['directConfig']>
+      { payload }: PayloadAction<StreamState['directConfig']>,
     ) => {
       state.directConfig = payload
     },
     updateComposedConfig: (
       state,
-      { payload }: PayloadAction<StreamState['composedConfig']>
+      { payload }: PayloadAction<StreamState['composedConfig']>,
     ) => {
       state.composedConfig = payload
     },
@@ -195,7 +195,7 @@ export const streamSlice = createSlice({
         (state, { error }) => {
           console.warn(error)
           state.liveState = 'idle'
-        }
+        },
       )
   },
 })

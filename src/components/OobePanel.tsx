@@ -24,9 +24,10 @@ import QNRTC, {
 import { memo, useEffect, useState } from 'react'
 
 import { Settings } from '../features/settingSlice'
-import { useAppDispatch, useAppSelector } from '../store'
+import { useAppDispatch } from '../store'
 import AudioIndicator from './AudioIndicator'
 import VideoBox from './VideoBox'
+import { useSettings } from '../utils/hooks'
 
 type OobePanelProps = {
   onConfirm: (config: Partial<Settings>) => void
@@ -46,7 +47,7 @@ const OobePanel = memo(function OobePanel({
     defaultCamera,
     microphoneMuted: defaultMicMuted,
     cameraMuted: defaultCamMuted,
-  } = useAppSelector((s) => s.settings)
+  } = useSettings()
 
   const [microphoneId, setMicrophoneId] = useState<string>('')
   const [cameraId, setCameraId] = useState<string>('')
@@ -69,7 +70,7 @@ const OobePanel = memo(function OobePanel({
   const [neverPrompt, setNeverPropmt] = useState(false)
   const [cameraMuted, setCameraMuted] = useState(defaultCamMuted ?? false)
   const [microphoneMuted, setMicrophoneMuted] = useState(
-    defaultMicMuted ?? false
+    defaultMicMuted ?? false,
   )
 
   const { width, height } = SUPPORT_VIDEO_ENCODER_CONFIG_LIST[cameraPreset]

@@ -23,6 +23,7 @@ import {
 import { useTopRightBox } from '../pages/layout'
 import { useAppDispatch, useAppSelector } from '../store'
 import { isMobile } from '../utils'
+import { useRoomState } from '../utils/hooks'
 const ComposedConfigForm = lazy(() => import('./ConfigForm'))
 
 const StreamingControl = memo(() => {
@@ -34,9 +35,9 @@ const StreamingControl = memo(() => {
   const getUrl = () => getRtmpUrl(roomId, Date.now())
 
   const { liveState, liveMode, lastLiveMode, lastStreamId } = useAppSelector(
-    (s) => s.stream
+    (s) => s.stream,
   )
-  const { connectionState: state } = useAppSelector((s) => s.webrtc)
+  const { connectionState: state } = useRoomState()
   const disabled = state != QState.CONNECTED && state != QState.RECONNECTED
   const mobile = isMobile()
 
@@ -56,7 +57,7 @@ const StreamingControl = memo(() => {
         stopLive({
           liveMode: lastLiveMode!,
           streamID: lastStreamId!,
-        })
+        }),
       )
     }
   }
@@ -176,7 +177,7 @@ const StreamingControl = memo(() => {
           </Grow>
         )}
       </>,
-      boxRef.current
+      boxRef.current,
     )
   ) : (
     <></>

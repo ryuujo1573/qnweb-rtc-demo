@@ -46,9 +46,10 @@ import {
   updateComposedConfig,
   updateDirectConfig,
 } from '../features/streamSlice'
-import { refStore } from '../features/webrtcSlice'
+import { refStore } from '../features/roomSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { isAudioTrack, isVideoTrack } from '../utils'
+import { useRoomState } from '../utils/hooks'
 
 const Accordion = styled((props: AccordionProps) => (
   <MuiAccordion disableGutters elevation={0} {...props} />
@@ -93,12 +94,12 @@ export const DirectConfigPanel = forwardRef<HTMLDivElement>((_, ref) => {
   const config = useAppSelector((s) => s.stream.directConfig)
   const dispatch = useAppDispatch()
 
-  const { camera, microphone, screenVideo, screenAudio } = useAppSelector(
-    (s) => s.webrtc.localTrack
-  )
+  const {
+    localTrack: { camera, microphone, screenVideo, screenAudio },
+  } = useRoomState()
 
   const localTracks = Array.from(
-    refStore.matchLocalTracks(camera, microphone, screenVideo, screenAudio)
+    refStore.matchLocalTracks(camera, microphone, screenVideo, screenAudio),
   )
   const [cameraTrack, microphoneTrack, screenVideoTrack, screenAudioTrack] =
     localTracks
@@ -108,7 +109,7 @@ export const DirectConfigPanel = forwardRef<HTMLDivElement>((_, ref) => {
       updateDirectConfig({
         audioTrackId: config.audioTrackId,
         videoTrackId,
-      })
+      }),
     )
   }
 
@@ -117,7 +118,7 @@ export const DirectConfigPanel = forwardRef<HTMLDivElement>((_, ref) => {
       updateDirectConfig({
         videoTrackId: config.videoTrackId,
         audioTrackId,
-      })
+      }),
     )
   }
 
@@ -732,7 +733,7 @@ const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.x` as const,
                             {
                               valueAsNumber: true,
-                            }
+                            },
                           )}
                           error={!!errors.transcodingTracks?.[index]?.x}
                           helperText={
@@ -749,7 +750,7 @@ const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.y` as const,
                             {
                               valueAsNumber: true,
-                            }
+                            },
                           )}
                           error={!!errors.transcodingTracks?.[index]?.y}
                           helperText={
@@ -766,7 +767,7 @@ const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.zOrder` as const,
                             {
                               valueAsNumber: true,
-                            }
+                            },
                           )}
                           error={!!errors.transcodingTracks?.[index]?.zOrder}
                           helperText={
@@ -783,7 +784,7 @@ const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.width` as const,
                             {
                               valueAsNumber: true,
-                            }
+                            },
                           )}
                           error={!!errors.transcodingTracks?.[index]?.width}
                           helperText={
@@ -800,7 +801,7 @@ const ComposedConfigForm = forwardRef<
                             `transcodingTracks.${index}.height` as const,
                             {
                               valueAsNumber: true,
-                            }
+                            },
                           )}
                           error={!!errors.transcodingTracks?.[index]?.height}
                           helperText={
@@ -814,7 +815,7 @@ const ComposedConfigForm = forwardRef<
                           select
                           label="渲染模式"
                           {...register(
-                            `transcodingTracks.${index}.renderMode` as const
+                            `transcodingTracks.${index}.renderMode` as const,
                           )}
                           error={
                             !!errors.transcodingTracks?.[index]?.renderMode
@@ -875,7 +876,7 @@ const ComposedConfigForm = forwardRef<
                 stopLive({
                   streamID: lastStreamId!,
                   liveMode: lastLiveMode!,
-                })
+                }),
               )
             } else {
               // 保存并推流

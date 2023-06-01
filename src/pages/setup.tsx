@@ -4,11 +4,12 @@ import { useLocation, useNavigate } from 'react-router-dom'
 
 import { decodeToken } from '../api'
 import { CustomTextField } from '../components'
-import { updateUserId, updateUserIdTemp } from '../features/identitySlice'
+import { updateUserId, updateUserIdFromToken } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
 import { update } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkRoomId, checkUserId } from '../utils'
+import { useSettings } from '../utils/hooks'
 
 interface Location {
   state: { jumpto?: string }
@@ -17,7 +18,7 @@ interface Location {
 export default function SetupPage() {
   const theme = useTheme()
   const { userId } = useAppSelector((s) => s.identity)
-  const { primaryColor } = useAppSelector((s) => s.settings)
+  const { primaryColor } = useSettings()
   const dispatch = useAppDispatch()
 
   const [connectById, setConnectById] = useState(true)
@@ -82,7 +83,7 @@ export default function SetupPage() {
             dispatch(
               error({
                 message: '房间名限制3~64个字符，并且只能包含字母、数字或下划线',
-              })
+              }),
             )
           }
         } else {
@@ -91,7 +92,7 @@ export default function SetupPage() {
             const { appId, userId, roomName } = decodeToken(roomToken)
 
             dispatch(update({ appId }))
-            dispatch(updateUserIdTemp(userId))
+            dispatch(updateUserIdFromToken(userId))
 
             navigate(`/${target}/${roomName}`, {
               state: roomToken,

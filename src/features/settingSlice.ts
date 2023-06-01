@@ -3,7 +3,7 @@ import QNRTC, {
   SUPPORT_SCREEN_ENCODER_CONFIG_LIST,
   SUPPORT_VIDEO_ENCODER_CONFIG_LIST,
 } from 'qnweb-rtc'
-import { RootState } from '../store'
+import type { RootState } from '../store'
 
 export type ThemeCode = 'light' | 'auto' | 'dark'
 
@@ -67,7 +67,7 @@ const storageKeys = {
 } as const // satisfies Partial<Record<keyof Settings, string>>
 
 const storage: {
-  readonly [key in typeof keys[number]]?: Settings[key]
+  readonly [key in (typeof keys)[number]]?: Settings[key]
 } = {}
 
 const keys = [
@@ -89,7 +89,7 @@ const keys = [
   'themeCode',
 ] as const
 
-function isStorageKey(key: string): key is typeof keys[number] {
+function isStorageKey(key: string): key is (typeof keys)[number] {
   return keys.includes(key as any)
 }
 
@@ -126,15 +126,17 @@ export const checkDevices = createAsyncThunk(
   async function checkDevices() {
     const deviceInfos = await QNRTC.getDevices()
     return deviceInfos.map((info) => info.toJSON())
-  }
+  },
 )
+
+const initialState: Settings = {
+  ...defaultSettings,
+  ...storage,
+}
 
 export const settingSlice = createSlice({
   name: 'settings',
-  initialState: {
-    ...defaultSettings,
-    ...storage,
-  },
+  initialState,
   reducers: {
     changeTheme: (state, { payload }: PayloadAction<ThemeCode>) => {
       state.themeCode = payload
@@ -154,13 +156,13 @@ export const settingSlice = createSlice({
         payload,
       }: PayloadAction<
         Omit<Partial<Settings>, 'cameras' | 'microphones' | 'playbacks'>
-      >
+      >,
     ) => {
       for (const key of Object.keys(payload)) {
         if (isStorageKey(key)) {
           localStorage.setItem(
             storageKeys[<keyof typeof storageKeys>key],
-            JSON.stringify(payload[<keyof typeof payload>key])
+            JSON.stringify(payload[<keyof typeof payload>key]),
           )
         }
       }
@@ -206,7 +208,7 @@ export const settingSlice = createSlice({
               break
           }
         }
-      }
+      },
     )
   },
 })

@@ -7,12 +7,15 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { App } from './app'
 import { store } from './store'
+import debug from 'debug'
+debug.enable('qnrtc:*')
+
 import './utils/extension'
 import './index.css'
 
 const root = document.getElementById('root')!
 function isActiveNumberInput(
-  t: Element | null
+  t: Element | null,
 ): t is Element & { blur(): void } {
   return t != null && 'type' in t && t.type === 'number'
 }
@@ -22,9 +25,11 @@ document.addEventListener('wheel', function (event) {
   }
 })
 createRoot(root).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </React.StrictMode>
+  <>
+    <React.StrictMode>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </React.StrictMode>
+  </>,
 )

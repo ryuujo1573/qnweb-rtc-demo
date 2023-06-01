@@ -11,7 +11,7 @@ import {
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import Draggable from 'react-draggable'
 import { useParams } from 'react-router'
-import { useAppSelector } from '../store'
+import { useRoomState } from '../utils/hooks'
 
 export type DetailPanelProps = {
   tracks: (QNTrack | undefined)[]
@@ -29,7 +29,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
   const { roomId } = useParams()
   const theme = useTheme()
 
-  const { connectionState: state } = useAppSelector((s) => s.webrtc)
+  const { connectionState: state } = useRoomState()
 
   // seperate tracks & store device labels in tags
   const [audioTracks, videoTracks] = useMemo(
@@ -37,7 +37,7 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
       tracks
         .filter(
           (t): t is QNLocalAudioTrack =>
-            t != null && t.isAudio() && t.trackID != undefined
+            t != null && t.isAudio() && t.trackID != undefined,
         )
         .map((t) => {
           const label = t.getMediaStreamTrack()?.label
@@ -48,14 +48,14 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
       tracks
         .filter(
           (t): t is QNLocalVideoTrack =>
-            t != null && t.isVideo() && t.trackID != undefined
+            t != null && t.isVideo() && t.trackID != undefined,
         )
         .map((t) => {
           t.tag = t.getMediaStreamTrack()?.label
           return t
         }),
     ],
-    [tracks]
+    [tracks],
   )
 
   const [audioStats, setAudioStats] =
@@ -144,11 +144,11 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
                       '音频丢包率',
                       uplinkLostRate == 0
                         ? '0%'
-                        : uplinkLostRate.toFixed(1) + '%'
+                        : uplinkLostRate.toFixed(1) + '%',
                     )}
                     {Line(
                       '音频码率',
-                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps'
+                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps',
                     )}
                   </Fragment>
                 )
@@ -167,11 +167,11 @@ export default function DetailPanel({ tracks }: DetailPanelProps) {
                       '视频丢包率',
                       uplinkLostRate == 0
                         ? '0%'
-                        : uplinkLostRate.toFixed(1) + '%'
+                        : uplinkLostRate.toFixed(1) + '%',
                     )}
                     {Line(
                       '视频码率',
-                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps'
+                      (uplinkBitrate / 1024).toFixed(3) + ' Kbps',
                     )}
                   </Fragment>
                 )

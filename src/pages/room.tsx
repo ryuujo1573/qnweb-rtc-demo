@@ -29,6 +29,7 @@ import React, {
   MutableRefObject,
   createContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react'
@@ -42,6 +43,7 @@ import Draggable from 'react-draggable'
 import { SwiperModule } from 'swiper/types'
 import { getRtmpUrl } from '../api'
 import {
+  BottomBar,
   DetailPanel,
   OobePanel,
   StrokeIcon,
@@ -60,14 +62,16 @@ import {
 import { startLive, updateDirectConfig } from '../features/streamSlice'
 import {
   RemoteUser,
-  createTrack,
   joinRoom,
   leaveRoom,
   pinTrack,
   refStore,
   removeTrack,
   unpinTrack,
-} from '../features/webrtcSlice'
+  closeOobe,
+  setCameraMuted,
+  setMicrophoneMuted,
+} from '../features/roomSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import {
   checkRoomId,
@@ -77,8 +81,12 @@ import {
   stringToColor,
   useDebounce,
 } from '../utils'
-import { useThrottle } from '../utils/hooks'
-import { success } from '../features/messageSlice'
+import {
+  useLiveRoomState,
+  useRoomState,
+  useSettings,
+  useThrottle,
+} from '../utils/hooks'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -93,11 +101,7 @@ export default function RoomPage() {
   const dispatch = useAppDispatch()
 
   const { roomId } = useParams()
-  const { state: roomToken } = useLocation()
-  const tokenRef = useRef<string>()
-  if (typeof roomToken == 'string') {
-    tokenRef.current = roomToken
-  }
+  const { state: token }: { state: string | null } = useLocation()
   const { userId } = useAppSelector((s) => s.identity)
 
   useEffect(() => {
@@ -127,13 +131,7 @@ export default function RoomPage() {
     showProfile,
     cameraMuted,
     microphoneMuted,
-  } = useAppSelector((s) => s.settings)
-
-  const [camMuted, _setCamMuted] = useState(cameraMuted)
-  const [micMuted, _setMicMuted] = useState(microphoneMuted)
-
-  const setCamMuted = useThrottle(_setCamMuted, 600)
-  const setMicMuted = useThrottle(_setMicMuted, 600)
+  } = useSettings()
 
   // session states
   const {
@@ -142,18 +140,20 @@ export default function RoomPage() {
     localTrack,
     pinnedTrackId,
     focusedTrackId,
-  } = useAppSelector((s) => s.webrtc)
-  const { liveState, lastLiveMode } = useAppSelector((s) => s.stream)
+    prejoinPrompt: oobe,
+  } = useRoomState()
+
+  const connected = state == QState.CONNECTED || state == QState.RECONNECTED
+  const { liveState, lastLiveMode } = useLiveRoomState()
   const { camTrack, micTrack, screenVideoTrack, screenAudioTrack } =
     refStore.getQNTracks(localTrack)
-  const [oobe, setOobe] = useState(!neverPrompt)
 
   useEffect(() => {
     dispatch(
       updateDirectConfig({
         audioTrackId: localTrack.microphone ?? localTrack.screenAudio,
         videoTrackId: localTrack.camera ?? localTrack.screenVideo,
-      })
+      }),
     )
 
     if (liveState == 'connected' && lastLiveMode == 'direct') {
@@ -161,16 +161,19 @@ export default function RoomPage() {
     }
   }, [localTrack])
 
-  const connected = state == QState.CONNECTED || state == QState.RECONNECTED
-
   const syncFlag = useRef('idle')
+
+  useLayoutEffect(() => {
+    if (neverPrompt) {
+      dispatch(closeOobe())
+    }
+  }, [])
 
   useEffect(() => {
     // if no OOBE panel, do normal inits
     if (!oobe) {
       if (syncFlag.current == 'idle') {
         syncFlag.current = 'connecting'
-        const token = tokenRef.current
         if (token) {
           dispatch(joinRoom({ token }))
         } else {
@@ -190,12 +193,12 @@ export default function RoomPage() {
     }
   }, [oobe, state])
 
-  useEffect(() => {
-    dispatch(checkDevices())
-    if (connected) {
-      dispatch(leaveRoom())
-    }
-  }, [])
+  // useEffect(() => {
+  //   dispatch(checkDevices())
+  //   if (connected) {
+  //     dispatch(leaveRoom())
+  //   }
+  // }, [])
 
   const pinnedBoxRef = useRef<HTMLDivElement>()
 
@@ -210,69 +213,8 @@ export default function RoomPage() {
     }
   }, [pinnedBoxRef.current, pinnedTrackId])
 
-  const isConnecting =
-    state == QState.CONNECTING || state == QState.RECONNECTING
-
-  const screenSharing = screenVideoTrack != null
-
-  // handle track mute & unmute
-  useEffect(() => {
-    if (connected) {
-      // create `camTrack` only if set unmuted to true
-      if (!camMuted && !camTrack) {
-        dispatch(createTrack('camera'))
-      } else if (camMuted && camTrack) {
-        dispatch(removeTrack('camera'))
-      }
-
-      // the same logic as camera
-      if (!micMuted && !micTrack) {
-        dispatch(createTrack('microphone'))
-      } else if (micMuted && micTrack) {
-        dispatch(removeTrack('microphone'))
-      }
-    }
-  }, [state, camMuted, micMuted])
-
-  // TODO: throttle
-  const onCallButtonClick =
-    (isConnected: boolean): MouseEventHandler<HTMLButtonElement> =>
-    async (evt) => {
-      if (isConnected) {
-        dispatch(leaveRoom())
-        const modKey = /Mac|iPhone|iPad/.test(navigator.userAgent)
-          ? 'metaKey'
-          : 'ctrlKey'
-        // if click whilst holding ctrl/cmd key,
-        if (!evt[modKey]) {
-          // the page won't navigate on dev purpose.
-          navigate('/')
-        }
-      } else {
-        const token = tokenRef.current
-        if (token) {
-          dispatch(joinRoom({ token }))
-        } else {
-          dispatch(joinRoom({ roomId }))
-        }
-      }
-      evt.stopPropagation()
-    }
-
   const mobile = isMobile()
   const [bottomBarShown, setBottomBarShown] = useState(true)
-  const bottomBarTimeout = 3000
-  const closeBottomBar = useDebounce(() => {
-    setBottomBarShown(false)
-  }, bottomBarTimeout)
-
-  useEffect(() => {
-    if (mobile) {
-      closeBottomBar()
-    }
-  }, [mobile])
-
-  // const [usersShown, setUsersShown] = useState(true)
 
   const camBoxRef = useRef<HTMLDivElement>(null)
   // const screenBoxRef = useRef<HTMLDivElement>(null)
@@ -291,13 +233,10 @@ export default function RoomPage() {
       }
       if (mobile) {
         setBottomBarShown((t) => !t)
-        closeBottomBar()
       }
     },
-    200
+    200,
   )
-
-  Object.assign(window, { camTrack })
 
   return (
     <Box height="100%" onClick={singleClickHandler}>
@@ -306,9 +245,9 @@ export default function RoomPage() {
           <OobePanel
             open
             onConfirm={(newSettings) => {
-              setOobe(false)
-              setCamMuted(newSettings.cameraMuted)
-              setMicMuted(newSettings.microphoneMuted)
+              dispatch(closeOobe())
+              dispatch(setCameraMuted(newSettings.cameraMuted ?? false))
+              dispatch(setMicrophoneMuted(newSettings.microphoneMuted ?? false))
 
               if (newSettings.neverPrompt) {
                 dispatch(save(newSettings))
@@ -316,7 +255,6 @@ export default function RoomPage() {
                 dispatch(update(newSettings))
               }
             }}
-            // onClose={() => setOobe(false)}
           />
         )}
         {showProfile && (
@@ -350,168 +288,10 @@ export default function RoomPage() {
         ) : (
           <RoomPage_L boxRef={pinnedBoxRef} />
         )}
-        {bottomBarShown && (
-          <Grow in={bottomBarShown}>
-            <Box
-              component="footer"
-              sx={{
-                position: 'fixed',
-                height: '60px',
-                zIndex: 1150,
-                background: mobile ? '#00000080' : 'inherit',
-                bottom: 0,
-                left: 0,
-                right: 0,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Tooltip title="复制房间链接">
-                <span>
-                  <IconButton
-                    disabled={!connected}
-                    onClick={async (e) => {
-                      await navigator.clipboard.writeText(window.location.href)
-                      dispatch(success({ message: '房间链接复制成功' }))
-                      e.stopPropagation()
-                    }}
-                  >
-                    <ContentCopyRounded />
-                  </IconButton>
-                </span>
-              </Tooltip>
-              <Tooltip
-                arrow
-                leaveDelay={200}
-                title={
-                  microphones ? (
-                    <TooltipList
-                      list={microphones}
-                      initialIndex={microphones.findIndex(
-                        (mic) => mic.deviceId == defaultMicrophone
-                      )}
-                      onSelect={({ deviceId }) => {
-                        dispatch(setDefaultMicrophone(deviceId))
-                      }}
-                    />
-                  ) : (
-                    '无可用麦克风'
-                  )
-                }
-              >
-                <span>
-                  <IconButton
-                    disabled={!connected || !microphones}
-                    onClick={(e) => {
-                      micTrack?.setMuted(!micMuted)
-                      setMicMuted(!micMuted)
-                      e.stopPropagation()
-                    }}
-                    children={micMuted ? <MicOffRounded /> : <MicRounded />}
-                  />
-                </span>
-              </Tooltip>
-              <Button
-                variant="contained"
-                color={connected ? 'error' : 'success'}
-                onClick={onCallButtonClick(connected)}
-                disabled={isConnecting || oobe}
-              >
-                {connected ? (
-                  <CallEndRounded key="CallEndRounded" />
-                ) : (
-                  <RestartAltRounded key="RestartAltRounded" />
-                )}
-              </Button>
-              <Tooltip
-                arrow
-                leaveDelay={200}
-                title={
-                  cameras ? (
-                    <TooltipList
-                      list={cameras}
-                      initialIndex={cameras.findIndex(
-                        (cam) => cam.deviceId == defaultCamera
-                      )}
-                      onSelect={({ deviceId }) => {
-                        dispatch(setDefaultCamera(deviceId))
-                        alert(JSON.stringify(cameras))
-                      }}
-                    />
-                  ) : (
-                    '无可用摄像头'
-                  )
-                }
-              >
-                <span>
-                  <IconButton
-                    disabled={!connected || !cameras}
-                    onClick={(e) => {
-                      camTrack?.setMuted(!camMuted)
-                      setCamMuted(!camMuted)
-                      e.stopPropagation()
-                    }}
-                    children={
-                      camMuted ? <VideocamOffRounded /> : <VideocamRounded />
-                    }
-                  />
-                </span>
-              </Tooltip>
-              {mobile ? (
-                <Tooltip title="镜头翻转">
-                  <span>
-                    <IconButton
-                      children={<CameraswitchRounded />}
-                      disabled={!connected || !camTrack}
-                      onClick={async (e) => {
-                        const parent = camTrack?.mediaElement?.parentElement
-                        if (parent) {
-                          const [w, h] = [
-                            parent.offsetWidth,
-                            parent.offsetHeight,
-                          ]
-                          parent.style.width = w + 'px'
-                          parent.style.height = h + 'px'
-                          await camTrack.switchCamera()
-                          // TODO: fix flickering
-                          camTrack.play(parent, { mirror: false })
-                          // debouncing
-                          closeBottomBar()
-                        }
-                      }}
-                    />
-                  </span>
-                </Tooltip>
-              ) : (
-                <Tooltip leaveDelay={200} title="屏幕共享">
-                  <span>
-                    <IconButton
-                      onClick={onScreenShareClick}
-                      color={screenSharing ? 'primary' : 'default'}
-                      disabled={!connected || mobile}
-                      children={<ScreenShareRounded />}
-                    />
-                  </span>
-                </Tooltip>
-              )}
-            </Box>
-          </Grow>
-        )}
+        <BottomBar />
       </>
     </Box>
   )
-
-  async function onScreenShareClick(
-    _evt: React.MouseEvent<Element, MouseEvent>
-  ) {
-    if (screenSharing == false) {
-      dispatch(createTrack('screenVideo'))
-    } else {
-      dispatch(removeTrack('screenVideo'))
-      dispatch(removeTrack('screenAudio'))
-    }
-  }
 }
 
 function RoomPage_S({
@@ -519,9 +299,7 @@ function RoomPage_S({
 }: {
   boxRef: MutableRefObject<HTMLDivElement | undefined>
 }) {
-  const { users, pinnedTrackId, focusedTrackId } = useAppSelector(
-    (s) => s.webrtc
-  )
+  const { users, pinnedTrackId, focusedTrackId } = useRoomState()
   const dispatch = useAppDispatch()
 
   // const parts = useMemo(() => {
@@ -661,9 +439,7 @@ function RoomPage_L({
 }: {
   boxRef: MutableRefObject<HTMLDivElement | undefined>
 }) {
-  const { users, pinnedTrackId, focusedTrackId } = useAppSelector(
-    (s) => s.webrtc
-  )
+  const { users, pinnedTrackId, focusedTrackId } = useRoomState()
   const dispatch = useAppDispatch()
   return (
     <>

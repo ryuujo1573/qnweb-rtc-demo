@@ -11,7 +11,7 @@ import {
   userLeft,
   subscribe,
   unsubscribe,
-} from './features/webrtcSlice'
+} from './features/roomSlice'
 import { store } from './store'
 
 // expose global instance
@@ -26,11 +26,11 @@ const check = () => store.dispatch(checkDevices())
     (state: QState, info?: QNConnectionDisconnectedInfo) => {
       if (info && info.errorMessage) {
         store.dispatch(
-          message({ message: 'disconnected:' + info.errorMessage })
+          message({ message: 'disconnected:' + info.errorMessage }),
         )
       }
       store.dispatch(stateChanged(state))
-    }
+    },
   )
   client.addListener('user-joined', (userID: string, userData?: string) => {
     store.dispatch(
@@ -39,7 +39,7 @@ const check = () => store.dispatch(checkDevices())
         userData,
         state: QState.CONNECTED,
         trackIds: [],
-      })
+      }),
     )
   })
   client.addListener('user-left', (userID: string) => {
@@ -48,18 +48,18 @@ const check = () => store.dispatch(checkDevices())
   client.addListener(
     'user-published',
     async (uid: string, qntracks: QNRemoteTrack[]) => {
-      if (!store.getState().webrtc.livemode) {
+      if (!store.getState().room.livemode) {
         store.dispatch(subscribe(qntracks))
       }
-    }
+    },
   )
   client.addListener(
     'user-unpublished',
     async (uid: string, qntracks: QNRemoteTrack[]) => {
-      if (!store.getState().webrtc.livemode) {
+      if (!store.getState().room.livemode) {
         store.dispatch(unsubscribe(qntracks))
       }
-    }
+    },
   )
 }
 
@@ -82,7 +82,7 @@ export async function fetchToken({
   userId: string
 }) {
   const resp = await fetch(
-    `${API_BASE}/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`
+    `${API_BASE}/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`,
   )
   return await resp.text()
 }

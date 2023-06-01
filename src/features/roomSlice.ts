@@ -1,30 +1,22 @@
 import {
   AsyncThunk,
   createAsyncThunk,
-  createEntityAdapter,
   createSlice,
-  Draft,
   PayloadAction,
+  Reducer,
 } from '@reduxjs/toolkit'
 import QNRTC, {
   QNCameraVideoTrack,
   QNConnectionState as QState,
-  QNLocalAudioTrack,
   QNLocalTrack,
-  QNLocalVideoTrack,
-  QNMicrophoneAudioTrackConfig,
   QNRemoteTrack,
   QNScreenVideoTrack,
-  QNTrack,
-  QNRemoteUser,
-  QNRTCClient,
-  QNConnectionDisconnectedInfo,
   QNMicrophoneAudioTrack,
   QNCustomAudioTrack,
 } from 'qnweb-rtc'
 import { client, fetchToken } from '../api'
-import { store, ThunkAPI } from '../store'
-import { error, message, success } from './messageSlice'
+import type { ThunkAPI } from '../store'
+import { error, success } from './messageSlice'
 
 type GenericAsyncThunk = AsyncThunk<unknown, unknown, any>
 
@@ -36,77 +28,86 @@ export const createTrack = createAsyncThunk<
   WebRTCState['localTrack'],
   TrackTag,
   ThunkAPI
->('webrtc/createTrack', async (tag, { dispatch, getState }) => {
-  let tracks: QNLocalTrack[] = []
-  const store = getState()
-  const {
-    facingMode,
-    cameraPreset,
-    defaultCamera,
-    defaultMicrophone,
-    defaultPlayback,
-  } = store.settings
-  const { localTrack } = store.webrtc
+>(
+  'webrtc/createTrack',
+  async (tag, { dispatch, getState }) => {
+    let tracks: QNLocalTrack[] = []
+    const store = getState()
+    const {
+      facingMode,
+      cameraPreset,
+      defaultCamera,
+      defaultMicrophone,
+      defaultPlayback,
+    } = store.settings
+    const { localTrack } = store.room
 
-  if (localTrack[tag] != undefined) {
-    dispatch(removeTrack(tag))
-  }
-
-  // for (const tag of trackTags)
-  switch (tag) {
-    case 'microphone': {
-      tracks.push(
-        await QNRTC.createMicrophoneAudioTrack({
-          tag,
-          microphoneId: defaultMicrophone,
-          encoderConfig: 'HIGH',
-        })
-      )
-      break
-    }
-    case 'camera': {
-      tracks.push(
-        await QNRTC.createCameraVideoTrack({
-          tag,
-          cameraId: defaultCamera,
-          encoderConfig: cameraPreset,
-          facingMode: undefined,
-        })
-      )
-      break
-    }
-    case 'screenVideo': {
-      // FIXME: this may cause problems
-      const result = await QNRTC.createScreenVideoTrack(
-        {
-          screenVideoTag: 'screenVideo',
-          screenAudioTag: 'screenAudio',
-        },
-        'auto'
-      )
-      if (Array.isArray(result)) {
-        const [videoTrack, audioTrack] = result
-        videoTrack.on('ended', screenShareCleanup)
-        tracks.push(videoTrack, audioTrack)
-      } else {
-        result.on('ended', screenShareCleanup)
-        tracks.push(result)
+    // for (const tag of trackTags)
+    switch (tag) {
+      case 'microphone': {
+        tracks.push(
+          await QNRTC.createMicrophoneAudioTrack({
+            tag,
+            microphoneId: defaultMicrophone,
+            encoderConfig: 'HIGH',
+          }),
+        )
+        break
       }
-      break
+      case 'camera': {
+        tracks.push(
+          await QNRTC.createCameraVideoTrack({
+            tag,
+            cameraId: defaultCamera,
+            encoderConfig: cameraPreset,
+            facingMode: undefined,
+          }),
+        )
+        break
+      }
+      case 'screenVideo': {
+        // FIXME: this may cause problems
+        const result = await QNRTC.createScreenVideoTrack(
+          {
+            screenVideoTag: 'screenVideo',
+            screenAudioTag: 'screenAudio',
+          },
+          'auto',
+        )
+        if (Array.isArray(result)) {
+          const [videoTrack, audioTrack] = result
+          videoTrack.on('ended', screenShareCleanup)
+          tracks.push(videoTrack, audioTrack)
+        } else {
+          result.on('ended', screenShareCleanup)
+          tracks.push(result)
+        }
+        break
+      }
+      default:
+        break
     }
-    default:
-      break
-  }
-  await client.publish(tracks)
-  tracks.forEach((t) => refStore.localTracksMap.set(t.trackID!, t))
 
-  return Object.fromEntries(tracks.map((t) => [t.tag!, t.trackID!]))
+    await client.publish(tracks)
+    tracks.forEach((t) => refStore.localTracksMap.set(t.trackID!, t))
 
-  function screenShareCleanup() {
-    dispatch(removeTrack('screenVideo'))
-    dispatch(removeTrack('screenAudio'))
-  }
-})
+    return Object.fromEntries(tracks.map((t) => [t.tag!, t.trackID!]))
+
+    function screenShareCleanup() {
+      dispatch(removeTrack('screenVideo'))
+      dispatch(removeTrack('screenAudio'))
+    }
+  },
+  {
+    condition: (tag, { getState }) => {
+      const { localTrack } = getState().room
+      const condition = localTrack[tag] === undefined
+      // no creation will be triggered if `localTrack.tag` is defined
+
+      return condition
+    },
+  },
+)
 
 type JoinRoomArg =
   | {
@@ -142,7 +143,7 @@ export const joinRoom = createAsyncThunk<void, JoinRoomArg, ThunkAPI>(
     //   trackIds: [],
     // }))
     // demo.forEach((u) => dispatch(userJoined(u)))
-  }
+  },
 )
 
 export const leaveRoom = createAsyncThunk<void, void, ThunkAPI>(
@@ -154,7 +155,7 @@ export const leaveRoom = createAsyncThunk<void, void, ThunkAPI>(
       // TODO: figure out possible errors
       dispatch(error({ message: e.message }))
     }
-  }
+  },
 )
 
 export const subscribe = createAsyncThunk(
@@ -167,7 +168,7 @@ export const subscribe = createAsyncThunk(
       refStore.remoteTracksMap.set(track.trackID!, track)
     }
     return { trackIds: allTracks.map((t) => t.trackID!), userId }
-  }
+  },
 )
 
 export const unsubscribe = createAsyncThunk(
@@ -181,7 +182,7 @@ export const unsubscribe = createAsyncThunk(
       refStore.remoteTracksMap.delete(trackId)
     }
     return { trackIds: removalIds, userId }
-  }
+  },
 )
 
 const supportedTracks = [
@@ -192,17 +193,20 @@ const supportedTracks = [
   // 'canvas',
 ] as const
 
-export type TrackTag = typeof supportedTracks[number]
+export type TrackTag = (typeof supportedTracks)[number]
 
 export type WebRTCState = {
   localTrack: {
-    [key in typeof supportedTracks[number]]?: string
+    [key in (typeof supportedTracks)[number]]?: string
   }
   connectionState: QState
   users: RemoteUser[]
   livemode: boolean
   pinnedTrackId?: string
   focusedTrackId?: string
+  prejoinPrompt: boolean
+  cameraMuted: boolean
+  microphoneMuted: boolean
 }
 
 const initialState: WebRTCState = {
@@ -210,6 +214,9 @@ const initialState: WebRTCState = {
   connectionState: QState.DISCONNECTED,
   users: [],
   livemode: false,
+  prejoinPrompt: true,
+  cameraMuted: false,
+  microphoneMuted: false,
 }
 
 export interface RemoteUser {
@@ -277,12 +284,12 @@ export const refStore = {
   get allTracks() {
     return Array.of<QNLocalTrack | QNRemoteTrack>(
       ...this.localTracksMap.values(),
-      ...this.remoteTracksMap.values()
+      ...this.remoteTracksMap.values(),
     )
   },
 }
 
-const webrtcSlice = createSlice({
+const roomSlice = createSlice({
   name: 'webrtc',
   initialState,
   reducers: {
@@ -304,7 +311,7 @@ const webrtcSlice = createSlice({
     },
     removeTrack: (
       state,
-      { payload: tag }: PayloadAction<TrackTag | undefined>
+      { payload: tag }: PayloadAction<TrackTag | undefined>,
     ) => {
       if (tag) {
         // remove specified
@@ -340,9 +347,25 @@ const webrtcSlice = createSlice({
     unfocusTrack: (state) => {
       state.focusedTrackId = undefined
     },
+    closeOobe: (state) => {
+      state.prejoinPrompt = false
+    },
+    setCameraMuted: (state, action: PayloadAction<boolean>) => {
+      state.cameraMuted = action.payload
+    },
+    setMicrophoneMuted: (state, action: PayloadAction<boolean>) => {
+      state.microphoneMuted = action.payload
+    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(createTrack.pending, (state, action) => {
+        state.localTrack = {
+          ...state.localTrack,
+          [action.meta.arg]: null,
+          // use `null` as pending flag
+        }
+      })
       .addCase(createTrack.fulfilled, (state, action) => {
         state.localTrack = {
           ...state.localTrack,
@@ -367,12 +390,12 @@ const webrtcSlice = createSlice({
       .addMatcher(
         // matcher can be defined inline as a type predicate function
         (action): action is RejectedAction => action.type.endsWith('/rejected'),
-        (state, action) => {}
+        (state, action) => {},
       )
   },
 })
 
-export default webrtcSlice.reducer
+export default roomSlice.reducer as Reducer<WebRTCState>
 
 export const {
   stateChanged,
@@ -384,4 +407,7 @@ export const {
   unpinTrack,
   focusTrack,
   unfocusTrack,
-} = webrtcSlice.actions
+  closeOobe,
+  setCameraMuted,
+  setMicrophoneMuted,
+} = roomSlice.actions

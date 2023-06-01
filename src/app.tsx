@@ -1,42 +1,16 @@
 import { Alert, CssBaseline, Snackbar, ThemeProvider } from '@mui/material'
-import { createTheme } from '@mui/material/styles'
 import * as colors from '@mui/material/colors'
+import { createTheme } from '@mui/material/styles'
 import { useEffect, useMemo, useState } from 'react'
-import { createHashRouter, RouterProvider } from 'react-router-dom'
+import { RouterProvider, createHashRouter } from 'react-router-dom'
 
-import { reset } from './features/messageSlice'
-import { ErrorPage, Layout, LiveRoomPage, RoomPage, SetupPage } from './pages'
+import router from './pages'
 import { useAppDispatch, useAppSelector } from './store'
-
-const router = createHashRouter(
-  [
-    {
-      path: '/',
-      element: <Layout />,
-      errorElement: <ErrorPage />,
-      children: [
-        {
-          path: '',
-          element: <SetupPage />,
-        },
-        {
-          path: 'room/:roomId',
-          element: <RoomPage />,
-        },
-        {
-          path: 'live/:liveId',
-          element: <LiveRoomPage />,
-        },
-      ],
-    },
-  ],
-  {
-    basename: import.meta.env['BASE_URL'],
-  }
-)
+import { reset } from './features/messageSlice'
+import { useSettings } from './utils/hooks'
 
 export const App = () => {
-  const { themeCode, primaryColor } = useAppSelector((s) => s.settings)
+  const { themeCode, primaryColor } = useSettings()
   const [darkmode, toggleDarkmode] = useState(themeCode == 'dark')
   const dispatch = useAppDispatch()
   const { grey } = colors

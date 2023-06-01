@@ -47,6 +47,7 @@ import {
 } from '../features/settingSlice'
 import { useAppDispatch, useAppSelector } from '../store'
 import { checkAppId, checkUserId, getPassedTimeDesc, isMobile } from '../utils'
+import { useSettings } from '../utils/hooks'
 
 function SectionFragment(props: { title: string; children?: React.ReactNode }) {
   return (
@@ -78,7 +79,7 @@ export default function Layout() {
     microphoneMuted,
     neverPrompt,
     showProfile,
-  } = useAppSelector((s) => s.settings)
+  } = useSettings()
   const { userId } = useAppSelector((s) => s.identity)
 
   const [drawerOpen, setDrawerOpen] = useState(false)

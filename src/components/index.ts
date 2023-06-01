@@ -1,4 +1,5 @@
 import AudioWave from './AudioWave'
+import BottomBar from './BottomBar'
 import CustomTextField from './CustomTextField'
 import DetailPanel from './DetailPanel'
 import TooltipList from './TooltipList'
@@ -12,6 +13,7 @@ import StrokeIcon from './StrokeIcon'
 
 export {
   AudioWave,
+  BottomBar,
   CustomTextField,
   DetailPanel,
   TooltipList,
