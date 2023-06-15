@@ -41,7 +41,7 @@ import { Swiper, SwiperSlide } from 'swiper/react'
 
 import Draggable from 'react-draggable'
 import { SwiperModule } from 'swiper/types'
-import { getRtmpUrl } from '../api'
+import { fetchToken, getRtmpUrl } from '../api'
 import {
   BottomBar,
   DetailPanel,
@@ -68,11 +68,11 @@ import {
   refStore,
   removeTrack,
   unpinTrack,
-  closeOobe,
   setCameraMuted,
   setMicrophoneMuted,
+  createTrack,
 } from '../features/roomSlice'
-import { useAppDispatch, useAppSelector } from '../store'
+import { ThunkAPI, useAppDispatch, useAppSelector } from '../store'
 import {
   checkRoomId,
   checkUserId,
@@ -87,6 +87,7 @@ import {
   useSettings,
   useThrottle,
 } from '../utils/hooks'
+import { AsyncThunk, ThunkAction } from '@reduxjs/toolkit'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -101,7 +102,7 @@ export default function RoomPage() {
   const dispatch = useAppDispatch()
 
   const { roomId } = useParams()
-  const { state: token }: { state: string | null } = useLocation()
+  let { state: token }: { state: string | null } = useLocation()
   const { userId } = useAppSelector((s) => s.identity)
 
   useEffect(() => {
@@ -140,7 +141,6 @@ export default function RoomPage() {
     localTrack,
     pinnedTrackId,
     focusedTrackId,
-    prejoinPrompt: oobe,
   } = useRoomState()
 
   const connected = state == QState.CONNECTED || state == QState.RECONNECTED
@@ -161,44 +161,28 @@ export default function RoomPage() {
     }
   }, [localTrack])
 
-  const syncFlag = useRef('idle')
-
-  useLayoutEffect(() => {
-    if (neverPrompt) {
-      dispatch(closeOobe())
-    }
-  }, [])
-
   useEffect(() => {
     // if no OOBE panel, do normal inits
-    if (!oobe) {
-      if (syncFlag.current == 'idle') {
-        syncFlag.current = 'connecting'
-        if (token) {
-          dispatch(joinRoom({ token }))
-        } else {
-          dispatch(joinRoom({ roomId }))
-        }
-      }
-
-      if (syncFlag.current == 'connecting' && connected) {
-        syncFlag.current = 'connected'
-        return () => {
-          if (syncFlag.current == 'connected') {
-            dispatch(removeTrack())
-            dispatch(leaveRoom())
+    if (neverPrompt) {
+      const promise = (async () => {
+        token ??= await fetchToken({ roomId, appId, userId })
+        const { meta } = await dispatch(joinRoom(token))
+        if (meta.requestStatus == 'fulfilled') {
+          if (!cameraMuted) {
+            dispatch(createTrack('camera'))
+          }
+          if (!microphoneMuted) {
+            dispatch(createTrack('microphone'))
           }
         }
+      })()
+
+      return () => {
+        dispatch(removeTrack())
+        dispatch(leaveRoom())
       }
     }
-  }, [oobe, state])
-
-  // useEffect(() => {
-  //   dispatch(checkDevices())
-  //   if (connected) {
-  //     dispatch(leaveRoom())
-  //   }
-  // }, [])
+  }, [neverPrompt])
 
   const pinnedBoxRef = useRef<HTMLDivElement>()
 
@@ -241,22 +225,7 @@ export default function RoomPage() {
   return (
     <Box height="100%" onClick={singleClickHandler}>
       <>
-        {oobe && (
-          <OobePanel
-            open
-            onConfirm={(newSettings) => {
-              dispatch(closeOobe())
-              dispatch(setCameraMuted(newSettings.cameraMuted ?? false))
-              dispatch(setMicrophoneMuted(newSettings.microphoneMuted ?? false))
-
-              if (newSettings.neverPrompt) {
-                dispatch(save(newSettings))
-              } else {
-                dispatch(update(newSettings))
-              }
-            }}
-          />
-        )}
+        {neverPrompt || <OobePanel open />}
         {showProfile && (
           <DetailPanel
             tracks={[camTrack, micTrack, screenVideoTrack, screenAudioTrack]}

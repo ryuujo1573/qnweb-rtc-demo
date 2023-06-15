@@ -14,7 +14,7 @@ import QNRTC, {
   QNMicrophoneAudioTrack,
   QNCustomAudioTrack,
 } from 'qnweb-rtc'
-import { client, fetchToken } from '../api'
+import { client } from '../api'
 import type { ThunkAPI } from '../store'
 import { error, success } from './messageSlice'
 
@@ -109,30 +109,18 @@ export const createTrack = createAsyncThunk<
   },
 )
 
-type JoinRoomArg =
-  | {
-      token: string
-      roomId?: undefined
-    }
-  | {
-      roomId: string
-      token?: undefined
-    }
-
-export const joinRoom = createAsyncThunk<void, JoinRoomArg, ThunkAPI>(
+export const joinRoom = createAsyncThunk<void, string, ThunkAPI>(
   'webrtc/joinRoom',
-  async (arg, { getState, dispatch, rejectWithValue }) => {
+  async (token, { getState, dispatch, rejectWithValue }) => {
     const state = getState()
     const { appId } = state.settings
     const { userId } = state.identity
     if (!userId) {
       return rejectWithValue('加入房间失败，用户名为空！')
     }
-    const { token, roomId } = arg
-    const roomToken = token ?? (await fetchToken({ roomId, appId, userId }))
 
     try {
-      await client.join(roomToken, userId)
+      await client.join(token, userId)
     } catch (e: any) {
       return rejectWithValue(JSON.stringify(e))
     }
@@ -204,7 +192,6 @@ export type WebRTCState = {
   livemode: boolean
   pinnedTrackId?: string
   focusedTrackId?: string
-  prejoinPrompt: boolean
   cameraMuted: boolean
   microphoneMuted: boolean
 }
@@ -214,7 +201,6 @@ const initialState: WebRTCState = {
   connectionState: QState.DISCONNECTED,
   users: [],
   livemode: false,
-  prejoinPrompt: true,
   cameraMuted: false,
   microphoneMuted: false,
 }
@@ -258,11 +244,7 @@ export const refStore = {
   },
   *matchLocalTracks(...ids: (string | undefined)[]) {
     for (const id of ids) {
-      if (id) {
-        yield this.localTracksMap.get(id)
-      } else {
-        yield undefined
-      }
+      yield this.localTracksMap.get(id!)
     }
   },
   queryRemoteTracks(ids: string[]) {
@@ -276,9 +258,7 @@ export const refStore = {
   },
   *matchRemoteTracks(...ids: (string | undefined)[]) {
     for (const id of ids) {
-      if (id) {
-        yield this.remoteTracksMap.get(id)
-      }
+      yield this.remoteTracksMap.get(id!)
     }
   },
   get allTracks() {
@@ -347,9 +327,6 @@ const roomSlice = createSlice({
     unfocusTrack: (state) => {
       state.focusedTrackId = undefined
     },
-    closeOobe: (state) => {
-      state.prejoinPrompt = false
-    },
     setCameraMuted: (state, action: PayloadAction<boolean>) => {
       state.cameraMuted = action.payload
     },
@@ -371,6 +348,9 @@ const roomSlice = createSlice({
           ...state.localTrack,
           ...action.payload,
         }
+      })
+      .addCase(createTrack.rejected, (state, action) => {
+        delete state.localTrack[action.meta.arg]
       })
       .addCase(subscribe.fulfilled, (state, action) => {
         const { userId, trackIds } = action.payload
@@ -407,7 +387,6 @@ export const {
   unpinTrack,
   focusTrack,
   unfocusTrack,
-  closeOobe,
   setCameraMuted,
   setMicrophoneMuted,
 } = roomSlice.actions

@@ -42,7 +42,14 @@ import {
 } from '../features/roomSlice'
 import { useAppDispatch } from '../store'
 import { useLocation, useNavigate, useParams } from 'react-router'
-import { useRoomState, useSettings, useThrottle } from '../utils/hooks'
+import {
+  useIdentityState,
+  useRoomState,
+  useSettings,
+  useThrottle,
+} from '../utils/hooks'
+import { fetchToken } from '../api'
+import router from '../pages'
 
 const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
   const dispatch = useAppDispatch()
@@ -65,6 +72,8 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
     neverPrompt,
     showProfile,
   } = useSettings()
+
+  const { userId } = useIdentityState()
 
   const { localTrack, connectionState } = useRoomState()
   const { camTrack, micTrack, screenVideoTrack, screenAudioTrack } =
@@ -132,9 +141,15 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
         }
       } else {
         if (token) {
-          dispatch(joinRoom({ token }))
+          dispatch(joinRoom(token))
         } else {
-          dispatch(joinRoom({ roomId }))
+          if (userId) {
+            fetchToken({ roomId, appId, userId }).then((token) => {
+              dispatch(joinRoom(token))
+            })
+          } else {
+            navigate('/')
+          }
         }
       }
       evt.stopPropagation()
@@ -211,7 +226,7 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
           variant="contained"
           color={connected ? 'error' : 'success'}
           onClick={onCallButtonClick(connected)}
-          disabled={isConnecting}
+          disabled={isConnecting || !neverPrompt}
         >
           {connected ? (
             <CallEndRounded key="CallEndRounded" />

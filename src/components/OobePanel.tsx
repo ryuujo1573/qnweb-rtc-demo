@@ -23,20 +23,13 @@ import QNRTC, {
 } from 'qnweb-rtc'
 import { memo, useEffect, useState } from 'react'
 
-import { Settings } from '../features/settingSlice'
+import { Settings, save, update } from '../features/settingSlice'
 import { useAppDispatch } from '../store'
 import AudioIndicator from './AudioIndicator'
 import VideoBox from './VideoBox'
 import { useSettings } from '../utils/hooks'
 
-type OobePanelProps = {
-  onConfirm: (config: Partial<Settings>) => void
-}
-
-const OobePanel = memo(function OobePanel({
-  onConfirm,
-  ...props
-}: PopoverProps & OobePanelProps) {
+const OobePanel = function OobePanel(props: PopoverProps) {
   const dispatch = useAppDispatch()
   const {
     microphones,
@@ -53,11 +46,11 @@ const OobePanel = memo(function OobePanel({
   const [cameraId, setCameraId] = useState<string>('')
 
   if (microphoneId == '' || cameraId == '') {
-    const micId = microphones.at(0)?.deviceId
+    const micId = microphones[0]?.deviceId
     if (micId) {
       setMicrophoneId(micId)
     }
-    const camId = cameras.at(0)?.deviceId
+    const camId = cameras[0]?.deviceId
     if (camId) {
       setCameraId(camId)
     }
@@ -67,7 +60,7 @@ const OobePanel = memo(function OobePanel({
   const [videoTrack, setVideoTrack] = useState<QNLocalVideoTrack>()
 
   const [testing, setTesting] = useState({ audio: false, video: false })
-  const [neverPrompt, setNeverPropmt] = useState(false)
+  const [shouldSave, setShouldSave] = useState(false)
   const [cameraMuted, setCameraMuted] = useState(defaultCamMuted ?? false)
   const [microphoneMuted, setMicrophoneMuted] = useState(
     defaultMicMuted ?? false,
@@ -84,37 +77,39 @@ const OobePanel = memo(function OobePanel({
     if (testing.audio) {
       QNRTC.createMicrophoneAudioTrack({
         microphoneId,
-      }).then(setAudioTrack)
-    }
-
-    return () => {
-      if (testing.audio) {
+      }).then((track) => {
         setAudioTrack((oldTrack) => {
           oldTrack?.destroy()
-          return undefined
+          return track
         })
-      }
+      })
+    } else {
+      setAudioTrack((oldTrack) => {
+        oldTrack?.destroy()
+        return undefined
+      })
     }
-  }, [testing.audio])
+  }, [testing.audio, microphoneId])
 
   useEffect(() => {
     if (testing.video) {
       QNRTC.createCameraVideoTrack({
         cameraId,
         facingMode: undefined,
-        encoderConfig: cameraPreset,
-      }).then(setVideoTrack)
-    }
-
-    return () => {
-      if (testing.video) {
+        encoderConfig: '1080p',
+      }).then((track) => {
         setVideoTrack((oldTrack) => {
           oldTrack?.destroy()
-          return undefined
+          return track
         })
-      }
+      })
+    } else {
+      setVideoTrack((oldTrack) => {
+        oldTrack?.destroy()
+        return undefined
+      })
     }
-  }, [testing.video])
+  }, [testing.video, cameraId])
 
   return (
     <Popover
@@ -156,6 +151,8 @@ const OobePanel = memo(function OobePanel({
             size="small"
             label="音频输入设备"
             value={microphoneId}
+            disabled={microphones.length == 0}
+            defaultValue={microphones[0]?.deviceId}
             onChange={(evt) => {
               setMicrophoneId(evt.target.value)
             }}
@@ -194,7 +191,8 @@ const OobePanel = memo(function OobePanel({
             size="small"
             label="视频输入设备"
             value={cameraId}
-            defaultValue={cameras.at(0)?.deviceId}
+            disabled={cameras.length == 0}
+            defaultValue={cameras[0]?.deviceId}
             onChange={(evt) => {
               setCameraId(evt.target.value)
             }}
@@ -246,14 +244,14 @@ const OobePanel = memo(function OobePanel({
             control={
               <Checkbox
                 size="small"
-                value={neverPrompt}
-                onChange={(_, v) => setNeverPropmt(v)}
+                value={shouldSave}
+                onChange={(_, v) => setShouldSave(v)}
               />
             }
             label={
               <Typography
                 variant="body2"
-                color={neverPrompt ? 'inherit' : 'gray'}
+                color={shouldSave ? 'inherit' : 'gray'}
               >
                 设为默认且不再询问
               </Typography>
@@ -265,13 +263,15 @@ const OobePanel = memo(function OobePanel({
               ml: 'auto',
             }}
             onClick={() => {
-              onConfirm({
-                defaultCamera: cameraId,
-                defaultMicrophone: microphoneId,
-                cameraMuted,
-                microphoneMuted,
-                neverPrompt,
-              })
+              dispatch(
+                (shouldSave ? save : update)({
+                  defaultCamera: cameraId,
+                  defaultMicrophone: microphoneId,
+                  cameraMuted,
+                  microphoneMuted,
+                  neverPrompt: true,
+                }),
+              )
             }}
           >
             加入房间
@@ -280,6 +280,6 @@ const OobePanel = memo(function OobePanel({
       </Box>
     </Popover>
   )
-})
+}
 
 export default OobePanel

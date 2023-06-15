@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client'
 import { Provider } from 'react-redux'
 import { App } from './app'
 import { store } from './store'
+import { checkDevices } from './features/settingSlice'
 import debug from 'debug'
 debug.enable('qnrtc:*')
 
@@ -24,6 +25,7 @@ document.addEventListener('wheel', function (event) {
     document.activeElement.blur()
   }
 })
+store.dispatch(checkDevices())
 createRoot(root).render(
   <>
     <React.StrictMode>

@@ -33,7 +33,6 @@ export default defineConfig({
         return modules
       },
     },
-
     // basicSsl(),
   ],
   resolve: {
@@ -45,6 +44,10 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    https: {
+      key: fs.readFileSync('cert/server.key'),
+      cert: fs.readFileSync('cert/server.crt'),
+    },
   },
   preview: {
     host: true,
