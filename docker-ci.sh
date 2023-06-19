@@ -2,9 +2,27 @@
 # Tue Mar 28 15:30:14 CST 2023 @ryuujo1573
 
 ## NOTE: this can be glichy, use with caution.
-set -e
-SDK_VERSION=$(pnpm info qnweb-rtc version)
+set -e # exits when any line failed
 
+read -r SDK_VERSION DEMO_VERSION < <(
+  node <<JS
+const demo = require('./package.json')
+const dep = demo.dependencies['qnweb-rtc']
+if (dep.startsWith('link:')) {
+  const pkg = require(dep.slice(5) + '/package.json')
+  console.log(pkg.version, demo.version)
+  // process.exit(pkg.version[0])
+} else {
+  // process.exit(1)
+}
+JS
+)
+# if sdk version is empty, exit
+if [[ -n "$SDK_VERSION" ]]; then
+  echo SDK Version: $SDK_VERSION, Demo Version: $DEMO_VERSION
+else
+  exit 6
+fi
 # read env variables.
 set -a
 if [[ -f ".env.local" ]]; then
@@ -15,7 +33,7 @@ else
     DOCKER_REGISTRY=
     DOCKER_PATH=
     DOCKER_CREDENTIAL=
-    DOCKER_PORT=80
+    DOCKER_PORT=
     SERVER_HOST=
 cfg
   exit
@@ -43,10 +61,6 @@ docker push $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
 # here's the script:
 ssh $SERVER_HOST <<EOF
   docker pull $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
-  if [[ \$(docker ps -q --filter ancestor=$DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION) --format='{{.ID}}\n{{.Ports}}' ]]; then
-    docker stop \$(docker ps -q --filter ancestor=$DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION --format='{{.ID}}')
-    docker run -d --rm --name qnweb-rtc-demo -p \$(docker port qnweb-rtc-demo | cut -d':' -f2):80 $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
-  else
-    docker run -d --rm --name qnweb-rtc-demo -p $DOCKER_PORT:80 $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
-  fi
+  docker stop \$(docker ps -q --filter name=qnweb-rtc-demo)
+  docker run -d --rm --name qnweb-rtc-demo -p $DOCKER_PORT:80 $DOCKER_REGISTRY/$DOCKER_PATH:$SDK_VERSION
 EOF
