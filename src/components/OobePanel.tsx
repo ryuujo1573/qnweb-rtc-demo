@@ -67,7 +67,7 @@ const OobePanel = function OobePanel(props: PopoverProps) {
   )
 
   const { width, height } = SUPPORT_VIDEO_ENCODER_CONFIG_LIST[cameraPreset]
-  const panelWidth = 320
+  const panelWidth = 300
   const estimatedHeight =
     height && width && typeof height == 'number' && typeof width == 'number'
       ? (panelWidth * height) / width
@@ -75,6 +75,9 @@ const OobePanel = function OobePanel(props: PopoverProps) {
 
   useEffect(() => {
     if (testing.audio) {
+      if (audioTrack) {
+        audioTrack.destroy()
+      }
       QNRTC.createMicrophoneAudioTrack({
         microphoneId,
       }).then((track) => {
@@ -93,6 +96,9 @@ const OobePanel = function OobePanel(props: PopoverProps) {
 
   useEffect(() => {
     if (testing.video) {
+      if (videoTrack) {
+        videoTrack.destroy()
+      }
       QNRTC.createCameraVideoTrack({
         cameraId,
         facingMode: undefined,
@@ -126,7 +132,7 @@ const OobePanel = function OobePanel(props: PopoverProps) {
     >
       <Box
         m={2}
-        width={`${panelWidth}px`}
+        // width={`${panelWidth}px`}
         // height="200px"
         maxWidth="90vw"
         sx={{

@@ -1,16 +1,8 @@
-import { getPassedTimeDesc } from './datetime'
-import { useDebounce } from './hooks'
-import { stringToColor } from './avatar'
-import { isAudioTrack, isVideoTrack } from './typing'
-import { PointerEvent } from 'react'
-
-export {
-  getPassedTimeDesc,
-  useDebounce,
-  stringToColor,
-  isAudioTrack,
-  isVideoTrack,
-}
+export * from './datetime'
+export * from './hooks'
+export * from './avatar'
+export * from './typing'
+import type { PointerEvent } from 'react'
 
 export const checkUserId = (v: string) => /^\w{1,24}$/.test(v)
 
@@ -24,7 +16,7 @@ export function delay(ms: number) {
 
 export function debounce<TArgs extends any[]>(
   fn: (...args: TArgs) => void,
-  interval: number
+  interval: number,
 ): typeof fn {
   let timeout = -1
   return (...args: TArgs) => {
@@ -37,7 +29,7 @@ export function debounce<TArgs extends any[]>(
 
 export function throttle<TArgs extends any[]>(
   fn: (...args: TArgs) => void,
-  interval: number
+  interval: number,
 ): typeof fn {
   let idle = true
   return (...args: TArgs) => {

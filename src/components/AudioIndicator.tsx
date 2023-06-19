@@ -6,7 +6,7 @@ const AudioIndicator = styled(
   (
     props: SliderProps & {
       audioTrack: QNLocalAudioTrack
-    }
+    },
   ) => {
     const { audioTrack, ...overrides } = props
     const [volumn, setCurrentVolumn] = useState(0)
@@ -14,13 +14,13 @@ const AudioIndicator = styled(
       const timer = setInterval(() => {
         const v = audioTrack.getVolumeLevel()
         setCurrentVolumn(v ?? 0)
-      })
+      }, 50)
       return () => {
         clearInterval(timer)
       }
     }, [])
     return <Slider {...overrides} value={volumn} max={1} disabled />
-  }
+  },
 )({
   [`& .${sliderClasses.thumb}`]: {
     width: 0,

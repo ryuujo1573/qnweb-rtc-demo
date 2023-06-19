@@ -9,49 +9,36 @@ import {
   CameraswitchRounded,
   ScreenShareRounded,
 } from '@mui/icons-material'
-import {
-  QNLocalVideoTrack,
-  QNRemoteVideoTrack,
-  QNConnectionState as QState,
-} from 'qnweb-rtc'
+import { QNConnectionState as QState } from 'qnweb-rtc'
 import { Grow, Box, Tooltip, IconButton, Button } from '@mui/material'
 import { success } from '../features/messageSlice'
-import {
-  setDefaultMicrophone,
-  setDefaultCamera,
-} from '../features/settingSlice'
+import { setDefaultMicrophone } from '../features/settingSlice'
 import TooltipList from './TooltipList'
-import { isMobile, throttle, useDebounce } from '../utils'
 import {
-  DragEvent,
-  MouseEventHandler,
-  SyntheticEvent,
-  forwardRef,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react'
+  isMobile,
+  useDebounce,
+  useIdentityState,
+  useRoomState,
+  useSettings,
+} from '../utils'
+import { MouseEventHandler, SyntheticEvent, useEffect } from 'react'
 import {
   createTrack,
   joinRoom,
   leaveRoom,
   refStore,
   removeTrack,
-  setCameraMuted,
-  setMicrophoneMuted,
 } from '../features/roomSlice'
 import { useAppDispatch } from '../store'
 import { useLocation, useNavigate, useParams } from 'react-router'
-import {
-  useIdentityState,
-  useRoomState,
-  useSettings,
-  useThrottle,
-} from '../utils/hooks'
 import { fetchToken } from '../api'
-import router from '../pages'
 
-const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
+interface BottomBarProps {
+  open: boolean
+  onClose: () => void
+}
+
+const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { roomId } = useParams()
@@ -91,11 +78,8 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
 
   const mobile = isMobile()
 
-  const [bottomBarShown, setBottomBarShown] = useState(true)
   const bottomBarTimeout = 3000
-  const closeBottomBar = useDebounce(() => {
-    setBottomBarShown(false)
-  }, bottomBarTimeout)
+  const closeBottomBar = useDebounce(onClose, bottomBarTimeout)
 
   useEffect(() => {
     if (mobile) {
@@ -165,7 +149,7 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
   }
 
   return (
-    <Grow in={bottomBarShown}>
+    <Grow in={open}>
       <Box
         component="footer"
         sx={{
@@ -242,11 +226,18 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
               <TooltipList
                 list={cameras}
                 initialIndex={cameras.findIndex(
-                  (cam) => cam.deviceId == defaultCamera,
+                  (cam) =>
+                    cam.deviceId ==
+                    camTrack?.getMediaStreamTrack()?.getSettings().deviceId,
                 )}
-                onSelect={({ deviceId }) => {
-                  dispatch(setDefaultCamera(deviceId))
-                  alert(JSON.stringify(cameras))
+                onSelect={async ({ deviceId }) => {
+                  const container = camTrack?.mediaElement?.parentElement
+                  // await camTrack?.switchCamera(deviceId)
+                  await camTrack?.switchCamera({
+                    deviceId,
+                    facingMode: undefined,
+                  })
+                  camTrack?.play(container!, { mirror: false })
                 }}
               />
             ) : (
@@ -271,9 +262,9 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
                 onClick={async (e) => {
                   const parent = camTrack?.mediaElement?.parentElement
                   if (parent) {
-                    const [w, h] = [parent.offsetWidth, parent.offsetHeight]
-                    parent.style.width = w + 'px'
-                    parent.style.height = h + 'px'
+                    // const [w, h] = [parent.offsetWidth, parent.offsetHeight]
+                    // parent.style.width = w + 'px'
+                    // parent.style.height = h + 'px'
                     await camTrack.switchCamera()
                     // TODO: fix flickering
                     camTrack.play(parent, { mirror: false })
@@ -299,5 +290,5 @@ const BottomBar = forwardRef<{}, {}>(function BottomBar(props, ref) {
       </Box>
     </Grow>
   )
-})
+}
 export default BottomBar

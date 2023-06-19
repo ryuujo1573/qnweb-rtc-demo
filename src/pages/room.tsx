@@ -143,7 +143,6 @@ export default function RoomPage() {
     focusedTrackId,
   } = useRoomState()
 
-  const connected = state == QState.CONNECTED || state == QState.RECONNECTED
   const { liveState, lastLiveMode } = useLiveRoomState()
   const { camTrack, micTrack, screenVideoTrack, screenAudioTrack } =
     refStore.getQNTracks(localTrack)
@@ -257,7 +256,12 @@ export default function RoomPage() {
         ) : (
           <RoomPage_L boxRef={pinnedBoxRef} />
         )}
-        <BottomBar />
+        <BottomBar
+          open={bottomBarShown}
+          onClose={() => {
+            setBottomBarShown(false)
+          }}
+        />
       </>
     </Box>
   )
