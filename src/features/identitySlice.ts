@@ -1,5 +1,4 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { checkUserId } from '../utils'
 
 export interface IdentityState {
   userId: string | null
@@ -8,11 +7,15 @@ export interface IdentityState {
 
 const initialState: IdentityState = {
   userId: localStorage.getItem('userid'),
-  token: location.search.match(/token=([^&]+)/)?.pop() || null,
+  token: new URLSearchParams(location.search).get('roomToken'),
+}
+
+if (initialState.token) {
+  console.info('token from url', initialState.token)
 }
 
 export const identitySlice = createSlice({
-  name: 'identity',
+  name: 'auth',
   initialState,
   reducers: {
     updateToken: (state, { payload }: PayloadAction<string>) => {

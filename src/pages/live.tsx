@@ -2,19 +2,20 @@ import { Box } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
 import { VideoPlayer } from '../components'
 
-import { checkRoomId } from '../utils'
-import { listUsers } from '../api'
+import { checkRoomId, getRandomId } from '../utils'
+import { fetchToken, listUsers } from '../api'
 import { useAppDispatch } from '../store'
 import { useEffect, useState } from 'react'
 import { joinRoom, setLivemode } from '../features/roomSlice'
 import { message } from '../features/messageSlice'
-import { useSettings } from '../utils/hooks'
+import { useIdentityState, useSettings } from '../utils/hooks'
 
 export default function LiveRoomPage() {
   const navigate = useNavigate()
-  const { liveId } = useParams()
   const dispatch = useAppDispatch()
+  const { liveId } = useParams()
   const { appId } = useSettings()
+  const { userId } = useIdentityState()
   if (!liveId || !checkRoomId(liveId)) {
     navigate('/')
     return <></>
@@ -28,7 +29,13 @@ export default function LiveRoomPage() {
   useEffect(() => {
     if (shouldJoinRoom) {
       dispatch(setLivemode(true))
-      dispatch(joinRoom(liveId))
+      fetchToken({
+        roomId: liveId,
+        appId,
+        userId: userId ?? `anonymous_${getRandomId()}`,
+      }).then((token) => {
+        dispatch(joinRoom(token))
+      })
     }
     listUsers({ appId, roomId: liveId! }).then((users) => {
       if (users.length == 0) {

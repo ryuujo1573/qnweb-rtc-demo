@@ -124,16 +124,12 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
           navigate(-1)
         }
       } else {
-        if (token) {
+        if (token != null) {
           dispatch(joinRoom(token))
+        } else if (userId) {
+          dispatch(joinRoom(await fetchToken({ roomId, appId, userId })))
         } else {
-          if (userId) {
-            fetchToken({ roomId, appId, userId }).then((token) => {
-              dispatch(joinRoom(token))
-            })
-          } else {
-            navigate('/')
-          }
+          navigate('/')
         }
       }
       evt.stopPropagation()

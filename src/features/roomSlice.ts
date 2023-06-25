@@ -17,6 +17,7 @@ import QNRTC, {
 import { client } from '../api'
 import type { ThunkAPI } from '../store'
 import { error, success } from './messageSlice'
+import { updateToken } from './identitySlice'
 
 type GenericAsyncThunk = AsyncThunk<unknown, unknown, any>
 
@@ -113,18 +114,21 @@ export const joinRoom = createAsyncThunk<void, string, ThunkAPI>(
   'webrtc/joinRoom',
   async (token, { getState, dispatch, rejectWithValue }) => {
     const state = getState()
-    const { appId } = state.settings
     const { userId } = state.identity
     if (!userId) {
       return rejectWithValue('加入房间失败，用户名为空！')
     }
 
-    try {
-      await client.join(token, userId)
-    } catch (e: any) {
-      return rejectWithValue(JSON.stringify(e))
-    }
+    await client.join(
+      token,
+      JSON.stringify({
+        userNickname: null,
+        demoVersion: import.meta.env.VITE_APP_VERSION,
+        demoCommitHash: import.meta.env.VITE_APP_LATEST_COMMIT_HASH,
+      }),
+    )
     dispatch(success({ message: '成功加入房间' }))
+    dispatch(updateToken(token))
     // const demo: RemoteUser[] = new Array(11).fill(0).map((_, i) => ({
     //   userID: `C${i}eeper`,
     //   state: QState.CONNECTED,

@@ -72,17 +72,18 @@ export function getRtmpUrl(path: string, serialNum?: string | number): string {
 }
 
 const API_BASE = 'https://api-demo.qnsdk.com/v1/rtc'
-export async function fetchToken({
-  roomId,
-  appId,
-  userId,
-}: {
+type TokenArgs = {
   roomId: string
   appId: string
   userId: string
-}) {
+  admin?: boolean
+}
+
+export async function fetchToken({ roomId, appId, userId, admin }: TokenArgs) {
   const resp = await fetch(
-    `${API_BASE}/token/admin/app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`,
+    `${API_BASE}/token/${
+      admin ? 'admin/' : ''
+    }app/${appId}/room/${roomId}/user/${userId}?bundleId=demo-rtc.qnsdk.com`,
   )
   return await resp.text()
 }
