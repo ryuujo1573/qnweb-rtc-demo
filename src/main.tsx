@@ -11,7 +11,6 @@ import { checkDevices } from './features/settingSlice'
 import debug from 'debug'
 debug.enable('qnrtc:*')
 
-import './utils/extension'
 import './index.css'
 
 const root = document.getElementById('root')!
