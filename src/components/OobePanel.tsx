@@ -222,11 +222,13 @@ const OobePanel = function OobePanel(props: PopoverProps) {
             {testing.video ? '结束' : '测试'}
           </Button>
         </Box>
-        <Grow in={!!videoTrack}>
-          <Box height={estimatedHeight} hidden={!videoTrack}>
-            <VideoBox videoTrack={videoTrack} />
-          </Box>
-        </Grow>
+        {videoTrack && (
+          <Grow in>
+            <Box height={estimatedHeight}>
+              <VideoBox videoTrack={videoTrack} />
+            </Box>
+          </Grow>
+        )}
         <FormControlLabel
           control={
             <Checkbox

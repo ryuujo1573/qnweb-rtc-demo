@@ -12,7 +12,10 @@ import {
 import { QNConnectionState as QState } from 'qnweb-rtc'
 import { Grow, Box, Tooltip, IconButton, Button } from '@mui/material'
 import { success } from '../features/messageSlice'
-import { setDefaultMicrophone } from '../features/settingSlice'
+import {
+  setDefaultCamera,
+  setDefaultMicrophone,
+} from '../features/settingSlice'
 import TooltipList from './TooltipList'
 import {
   isMobile,
@@ -79,11 +82,11 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
   const mobile = isMobile()
 
   const bottomBarTimeout = 3000
-  const closeBottomBar = useDebounce(onClose, bottomBarTimeout)
+  const resetButtomBarClosing = useDebounce(onClose, bottomBarTimeout)
 
   useEffect(() => {
     if (mobile) {
-      closeBottomBar()
+      resetButtomBarClosing()
     }
   }, [mobile])
 
@@ -185,8 +188,10 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
                 initialIndex={microphones.findIndex(
                   (mic) => mic.deviceId == defaultMicrophone,
                 )}
-                onSelect={({ deviceId }) => {
+                onSelect={async ({ deviceId }) => {
                   dispatch(setDefaultMicrophone(deviceId))
+                  dispatch(removeTrack('microphone'))
+                  dispatch(createTrack('microphone'))
                 }}
               />
             ) : (
@@ -227,13 +232,19 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
                     camTrack?.getMediaStreamTrack()?.getSettings().deviceId,
                 )}
                 onSelect={async ({ deviceId }) => {
-                  const container = camTrack?.mediaElement?.parentElement
-                  // await camTrack?.switchCamera(deviceId)
-                  await camTrack?.switchCamera({
-                    deviceId,
-                    facingMode: undefined,
-                  })
-                  camTrack?.play(container!, { mirror: false })
+                  dispatch(setDefaultCamera(deviceId))
+                  if (camTrack) {
+                    const parent = camTrack.mediaElement?.parentNode
+                    // await camTrack?.switchCamera(deviceId)
+                    await camTrack?.switchCamera({
+                      deviceId,
+                      facingMode: undefined,
+                    })
+                    parent &&
+                      (await camTrack.play(parent, {
+                        mirror: camTrack.facingMode == 'user',
+                      }))
+                  }
                 }}
               />
             ) : (
@@ -256,16 +267,16 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
                 children={<CameraswitchRounded />}
                 disabled={!connected || !camTrack}
                 onClick={async (e) => {
-                  const parent = camTrack?.mediaElement?.parentElement
-                  if (parent) {
-                    // const [w, h] = [parent.offsetWidth, parent.offsetHeight]
-                    // parent.style.width = w + 'px'
-                    // parent.style.height = h + 'px'
+                  if (camTrack) {
+                    const parent = camTrack.mediaElement?.parentElement
                     await camTrack.switchCamera()
                     // TODO: fix flickering
-                    camTrack.play(parent, { mirror: false })
+                    parent &&
+                      (await camTrack.play(parent, {
+                        mirror: camTrack.facingMode == 'user',
+                      }))
                     // debouncing
-                    closeBottomBar()
+                    resetButtomBarClosing()
                   }
                 }}
               />

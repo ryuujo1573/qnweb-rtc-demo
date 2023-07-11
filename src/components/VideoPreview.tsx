@@ -16,7 +16,7 @@ const VideoPreview = ({ ...boxProps }: VideoPreviewProps & BoxProps) => {
 
   useEffect(() => {
     // console.log('# create')
-    let track: QNCameraVideoTrack | undefined
+    let track: QNLocalVideoTrack | undefined
 
     QNRTC.createCameraVideoTrack({
       facingMode: undefined,

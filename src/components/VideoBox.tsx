@@ -14,11 +14,16 @@ export interface VideoBoxProps {
 const VideoBox = memo(
   forwardRef<HTMLDivElement, VideoBoxProps & BoxProps>(
     ({ videoTrack, sx, ...boxProps }, ref) => {
+      console.warn(
+        videoTrack,
+        JSON.parse(
+          JSON.stringify(videoTrack?.getMediaStreamTrack()?.getSettings()),
+        ),
+        videoTrack?.mediaElement,
+      )
       const boxRef = useRef<HTMLDivElement>()
       const dispatch = useAppDispatch()
       const { pinnedTrackId } = useRoomState()
-      const { mirror } = useSettings()
-      document.body.classList.toggle('mirror', mirror)
 
       const pinned =
         videoTrack != undefined &&
@@ -35,11 +40,12 @@ const VideoBox = memo(
         } else {
           box.classList.add('videoBox')
           if ('isSubscribed' in videoTrack) {
+            // 远端视频
             if (videoTrack.isSubscribed()) {
-              videoTrack.play(box, { mirror: false })
+              videoTrack.play(box)
             }
           } else {
-            videoTrack.play(box, { mirror: false })
+            videoTrack.play(box, { mirror: videoTrack.facingMode == 'user' })
           }
 
           if (videoTrack.mediaElement) {

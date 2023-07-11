@@ -7,25 +7,39 @@ import { CustomTextField } from '../components'
 import { updateUserId, updateUserIdFromToken } from '../features/identitySlice'
 import { error } from '../features/messageSlice'
 import { update } from '../features/settingSlice'
-import { useAppDispatch, useAppSelector } from '../store'
+import { useAppDispatch } from '../store'
 import { checkRoomId, checkUserId } from '../utils'
-import { useSettings } from '../utils/hooks'
+import { useIdentityState } from '../utils/hooks'
 
 interface Location {
   state: { jumpto?: string }
 }
 
 export default function SetupPage() {
-  const theme = useTheme()
-  const { userId } = useAppSelector((s) => s.identity)
-  const { primaryColor } = useSettings()
   const dispatch = useAppDispatch()
-
-  const [connectById, setConnectById] = useState(true)
-
+  const theme = useTheme()
   const navigate = useNavigate()
   const { state }: Location = useLocation()
 
+  const { userId, token } = useIdentityState()
+  if (token) {
+    try {
+      const { appId, userId, roomName } = decodeToken(token)
+
+      dispatch(update({ appId }))
+      dispatch(updateUserIdFromToken(userId))
+
+      navigate(`/room/${roomName}`, {
+        state: token,
+      })
+    } catch {
+      debugger
+      dispatch(error({ message: 'Token 值无效' }))
+    }
+  }
+  // const { primaryColor } = useSettings()
+
+  const [connectById, setConnectById] = useState(true)
   const [roomInputValue, setRoomInputValue] = useState('')
   const [newUserId, setNewUserId] = useState('')
   const targetRef = useRef('room')
