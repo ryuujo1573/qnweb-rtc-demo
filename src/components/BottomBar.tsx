@@ -24,7 +24,7 @@ import {
   useRoomState,
   useSettings,
 } from '../utils'
-import { MouseEventHandler, SyntheticEvent, useEffect } from 'react'
+import { MouseEventHandler, SyntheticEvent, useEffect, useState } from 'react'
 import {
   createTrack,
   joinRoom,
@@ -147,6 +147,8 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
     }
   }
 
+  const [camSwitching, setCamSwitching] = useState(false)
+
   return (
     <Grow in={open}>
       <Box
@@ -265,16 +267,19 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
             <span>
               <IconButton
                 children={<CameraswitchRounded />}
-                disabled={!connected || !camTrack}
+                disabled={!connected || !camTrack || camSwitching}
                 onClick={async (e) => {
                   if (camTrack) {
+                    camSwitching || setCamSwitching(true)
                     const parent = camTrack.mediaElement?.parentElement
                     await camTrack.switchCamera()
+
                     // TODO: fix flickering
                     parent &&
                       (await camTrack.play(parent, {
                         mirror: camTrack.facingMode == 'user',
                       }))
+                    setCamSwitching(false)
                     // debouncing
                     resetButtomBarClosing()
                   }

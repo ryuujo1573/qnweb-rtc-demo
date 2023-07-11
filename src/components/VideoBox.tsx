@@ -14,13 +14,6 @@ export interface VideoBoxProps {
 const VideoBox = memo(
   forwardRef<HTMLDivElement, VideoBoxProps & BoxProps>(
     ({ videoTrack, sx, ...boxProps }, ref) => {
-      console.warn(
-        videoTrack,
-        JSON.parse(
-          JSON.stringify(videoTrack?.getMediaStreamTrack()?.getSettings()),
-        ),
-        videoTrack?.mediaElement,
-      )
       const boxRef = useRef<HTMLDivElement>()
       const dispatch = useAppDispatch()
       const { pinnedTrackId } = useRoomState()
@@ -45,7 +38,10 @@ const VideoBox = memo(
               videoTrack.play(box)
             }
           } else {
-            videoTrack.play(box, { mirror: videoTrack.facingMode == 'user' })
+            videoTrack.play(box, {
+              mirror:
+                'facingMode' in videoTrack && videoTrack.facingMode == 'user',
+            })
           }
 
           if (videoTrack.mediaElement) {

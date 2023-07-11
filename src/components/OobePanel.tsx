@@ -29,6 +29,13 @@ import AudioIndicator from './AudioIndicator'
 import VideoBox from './VideoBox'
 import { useSettings } from '../utils/hooks'
 
+/**
+ * Out-of-box experience panel:
+ *
+ * Used to preview and select audio and video devices before joining the room.
+ *
+ * 用于加入房间前，选择开启并预览音视频设备。
+ */
 const OobePanel = function OobePanel(props: PopoverProps) {
   const dispatch = useAppDispatch()
   const {

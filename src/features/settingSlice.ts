@@ -26,45 +26,33 @@ type PrimaryColors = Omit<typeof import('@mui/material/colors'), 'common'>
 
 export interface Settings {
   appId: string
-  cameraMuted?: boolean
+  // 应用设置
+  themeCode: ThemeCode
+  primaryColor: keyof PrimaryColors
+  showProfile: boolean
+  neverPrompt: boolean
+  // 摄像头
+  cameraMuted: boolean
+  facingMode: FacingMode
   cameraPreset: CameraPreset
+  mirror: boolean
+  // 麦克风
+  microphoneMuted: boolean
+  // 屏幕共享
+  screenPreset: ScreenPreset
+  // 默认设备
   defaultCamera?: string
   defaultMicrophone?: string
   defaultPlayback?: string
-  facingMode: FacingMode
+  // 直播设置
   liveStreamBaseUrl: string
-  microphoneMuted?: boolean
-  mirror: boolean
-  neverPrompt: boolean
-  primaryColor: keyof PrimaryColors
-  screenPreset: ScreenPreset
   sei?: string
-  showProfile: boolean
-  themeCode: ThemeCode
-  // non-persistent value
+  // TODO: 从设置中移出设备列表
+  // 设备列表
   playbacks: PlainDeviceInfo[]
   microphones: PlainDeviceInfo[]
   cameras: PlainDeviceInfo[]
 }
-
-const storageKeys = {
-  appId: 'appid',
-  cameraMuted: 'camera-muted',
-  cameraPreset: 'camera-preset',
-  defaultCamera: 'default-camera',
-  defaultMicrophone: 'default-microphone',
-  defaultPlayback: 'default-playback',
-  facingMode: 'facing-mode',
-  liveStreamBaseUrl: 'livestream-url',
-  microphoneMuted: 'microphone-muted',
-  mirror: 'mirror',
-  neverPrompt: 'never-prompt',
-  primaryColor: 'primary',
-  screenPreset: 'screen-preset',
-  sei: 'sei',
-  showProfile: 'show-profile',
-  themeCode: 'color-theme',
-} as const // satisfies Partial<Record<keyof Settings, string>>
 
 const storage: {
   readonly [key in (typeof keys)[number]]?: Settings[key]
@@ -96,7 +84,7 @@ function isStorageKey(key: string): key is (typeof keys)[number] {
 for (const key of keys) {
   Object.defineProperty(storage, key, {
     get() {
-      const item = localStorage.getItem(storageKeys[key])
+      const item = localStorage.getItem(key)
       return item !== null ? JSON.parse(item) : undefined
     },
   })
@@ -134,6 +122,12 @@ const initialState: Settings = {
   ...storage,
 }
 
+// 应当保存的设置
+type SolidSettings = Omit<
+  Partial<Settings>,
+  'cameras' | 'microphones' | 'playbacks'
+>
+
 export const settingSlice = createSlice({
   name: 'settings',
   initialState,
@@ -150,18 +144,11 @@ export const settingSlice = createSlice({
         ...payload,
       }
     },
-    save: (
-      state,
-      {
-        payload,
-      }: PayloadAction<
-        Omit<Partial<Settings>, 'cameras' | 'microphones' | 'playbacks'>
-      >,
-    ) => {
+    save: (state, { payload }: PayloadAction<SolidSettings>) => {
       for (const key of Object.keys(payload)) {
         if (isStorageKey(key)) {
           localStorage.setItem(
-            storageKeys[<keyof typeof storageKeys>key],
+            key,
             JSON.stringify(payload[<keyof typeof payload>key]),
           )
         }
