@@ -40,7 +40,7 @@ export interface Settings {
   microphoneMuted: boolean
   // 屏幕共享
   screenPreset: ScreenPreset
-  // 默认设备
+  // 选定设备 ID
   defaultCamera?: string
   defaultMicrophone?: string
   defaultPlayback?: string
@@ -62,9 +62,6 @@ const keys = [
   'appId',
   'cameraMuted',
   'cameraPreset',
-  'defaultCamera',
-  'defaultMicrophone',
-  'defaultPlayback',
   'facingMode',
   'liveStreamBaseUrl',
   'microphoneMuted',
@@ -75,7 +72,7 @@ const keys = [
   'sei',
   'showProfile',
   'themeCode',
-] as const
+] as const satisfies readonly (keyof Settings)[]
 
 function isStorageKey(key: string): key is (typeof keys)[number] {
   return keys.includes(key as any)
@@ -123,10 +120,7 @@ const initialState: Settings = {
 }
 
 // 应当保存的设置
-type SolidSettings = Omit<
-  Partial<Settings>,
-  'cameras' | 'microphones' | 'playbacks'
->
+type SolidSettings = Pick<Partial<Settings>, (typeof keys)[number]>
 
 export const settingSlice = createSlice({
   name: 'settings',
