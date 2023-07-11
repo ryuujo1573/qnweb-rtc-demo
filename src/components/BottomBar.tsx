@@ -95,7 +95,9 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
     if (!camTrack) {
       dispatch(createTrack('camera'))
     } else {
-      camTrack.setMuted(true)
+      if (!navigator.userAgent.includes('15_1')) {
+        camTrack.setMuted(true)
+      }
       dispatch(removeTrack('camera'))
     }
 
