@@ -1,6 +1,6 @@
 import { Box } from '@mui/material'
 import { useNavigate, useParams } from 'react-router-dom'
-import { VideoPlayer } from '../components'
+import { HlsPlayer } from '../components'
 
 import { checkRoomId, getRandomId } from '../utils'
 import { fetchToken, listUsers } from '../api'
@@ -61,7 +61,7 @@ export default function LiveRoomPage() {
           bottom: 0,
         }}
       >
-        {src && <VideoPlayer src={src} autoPlay />}
+        {src && <HlsPlayer src={src} autoPlay />}
       </Box>
     </>
   )

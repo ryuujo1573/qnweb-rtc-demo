@@ -1,27 +1,12 @@
-import AudioWave from './AudioWave'
-import BottomBar from './BottomBar'
-import CustomTextField from './CustomTextField'
-import DetailPanel from './DetailPanel'
-import TooltipList from './TooltipList'
-import UserBox from './UserBox'
-import UserDialog from './UserDialog'
-import VideoBox from './VideoBox'
-import VideoPlayer from './VideoPlayer'
-import VideoPreview from './VideoPreview'
-import OobePanel from './OobePanel'
-import StrokeIcon from './StrokeIcon'
-
-export {
-  AudioWave,
-  BottomBar,
-  CustomTextField,
-  DetailPanel,
-  TooltipList,
-  UserBox,
-  UserDialog,
-  VideoBox,
-  VideoPlayer,
-  VideoPreview,
-  OobePanel,
-  StrokeIcon,
-}
+export { default as AudioWave } from './AudioWave'
+export { default as BottomBar } from './BottomBar'
+export { default as CustomTextField } from './CustomTextField'
+export { default as DetailPanel } from './DetailPanel'
+export { default as TooltipList } from './TooltipList'
+export { default as UserBox } from './UserBox'
+export { default as UserDialog } from './UserDialog'
+export { default as VideoBox } from './VideoBox'
+export { default as HlsPlayer } from './HlsPlayer'
+export { default as VideoPreview } from './VideoPreview'
+export { default as OobePanel } from './OobePanel'
+export { default as StrokeIcon } from './StrokeIcon'

@@ -9,7 +9,7 @@ export type VideoPlayerProps = {
   sx?: SxProps
 }
 
-export default function VideoPlayer({ autoPlay, src, sx }: VideoPlayerProps) {
+export default function HlsPlayer({ autoPlay, src, sx }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls>()
   const [state, setState] = useState('idle')
@@ -24,9 +24,10 @@ export default function VideoPlayer({ autoPlay, src, sx }: VideoPlayerProps) {
     hls.loadSource(src)
     hls.attachMedia(video)
     hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      video.muted = true
       setState('playing')
-      video.play()
+      video.play().then(() => {
+        video.muted = false
+      })
     })
     hls.on(Hls.Events.ERROR, (evt, data) => {
       console.error(JSON.parse(JSON.stringify(data)))
