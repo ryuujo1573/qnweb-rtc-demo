@@ -36,7 +36,12 @@ import { useSettings } from '../utils/hooks'
  *
  * 用于加入房间前，选择开启并预览音视频设备。
  */
-const OobePanel = function OobePanel(props: PopoverProps) {
+const OobePanel = function OobePanel({
+  onClose,
+  ...props
+}: PopoverProps & {
+  onClose: () => void
+}) {
   const dispatch = useAppDispatch()
   const {
     microphones,
@@ -278,13 +283,14 @@ const OobePanel = function OobePanel(props: PopoverProps) {
               ml: 'auto',
             }}
             onClick={() => {
+              onClose()
               dispatch(
                 (shouldSave ? save : update)({
                   defaultCamera: cameraId,
                   defaultMicrophone: microphoneId,
                   cameraMuted,
                   microphoneMuted,
-                  neverPrompt: true,
+                  neverPrompt: shouldSave,
                 }),
               )
             }}

@@ -1,8 +1,8 @@
-import { Alert, CssBaseline, Snackbar, ThemeProvider } from '@mui/material'
+import { Alert, CssBaseline, Snackbar } from '@mui/material'
+import { createTheme, ThemeProvider } from '@mui/material/styles'
 import * as colors from '@mui/material/colors'
-import { createTheme } from '@mui/material/styles'
 import { useEffect, useMemo, useState } from 'react'
-import { RouterProvider, createHashRouter } from 'react-router-dom'
+import { RouterProvider } from 'react-router-dom'
 
 import router from './pages'
 import { useAppDispatch, useAppSelector } from './store'

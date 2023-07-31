@@ -87,7 +87,6 @@ import {
   useSettings,
   useThrottle,
 } from '../utils/hooks'
-import { AsyncThunk, ThunkAction } from '@reduxjs/toolkit'
 
 export type QNVisualTrack = QNLocalVideoTrack | QNRemoteVideoTrack
 
@@ -134,10 +133,11 @@ export default function RoomPage() {
     microphoneMuted,
   } = useSettings()
 
+  const [showPanel, setShowPanel] = useState(!neverPrompt)
+
   // session states
   const {
     connectionState: state,
-    users,
     localTrack,
     pinnedTrackId,
     focusedTrackId,
@@ -162,7 +162,7 @@ export default function RoomPage() {
 
   useEffect(() => {
     // if no OOBE panel, do normal inits
-    if (neverPrompt) {
+    if (!showPanel) {
       const promise = (async () => {
         token ??= await fetchToken({ roomId, appId, userId })
         const { meta } = await dispatch(joinRoom(token))
@@ -181,7 +181,7 @@ export default function RoomPage() {
         dispatch(leaveRoom())
       }
     }
-  }, [neverPrompt])
+  }, [showPanel])
 
   const pinnedBoxRef = useRef<HTMLDivElement>()
 
@@ -224,7 +224,14 @@ export default function RoomPage() {
   return (
     <Box height="100%" onClick={singleClickHandler}>
       <>
-        {neverPrompt || <OobePanel open />}
+        {showPanel && (
+          <OobePanel
+            open
+            onClose={() => {
+              setShowPanel(false)
+            }}
+          />
+        )}
         {showProfile && (
           <DetailPanel
             tracks={[camTrack, micTrack, screenVideoTrack, screenAudioTrack]}

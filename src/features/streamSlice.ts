@@ -192,8 +192,7 @@ export const streamSlice = createSlice({
       })
       .addMatcher(
         (action) => action.type.includes('rejected'),
-        (state, { error }) => {
-          console.warn(error)
+        (state, _action) => {
           state.liveState = 'idle'
         },
       )

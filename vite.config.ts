@@ -19,6 +19,17 @@ export default defineConfig({
   plugins: [
     react({
       tsDecorators: true,
+      plugins: [
+        [
+          '@swc/plugin-transform-imports',
+          {
+            '@mui/icons-material': {
+              transform: '@mui/icons-material/{{ member }}',
+              preventFullImport: true,
+            },
+          },
+        ],
+      ],
     }),
     fullReload(['src/pages/room.tsx']),
     visualizer(),
@@ -38,6 +49,7 @@ export default defineConfig({
   resolve: {
     alias: {
       'hls.js': 'hls.js/dist/hls.min.js',
+      '@mui/material/base': '@mui/material',
     },
   },
   server: {
@@ -45,17 +57,17 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     https: {
-      key: fs.readFileSync('cert/server.key'),
       cert: fs.readFileSync('cert/server.crt'),
+      key: fs.readFileSync('cert/server.key'),
     },
   },
   preview: {
     host: true,
-    port: 443, // use: https://localhost/
+    port: 60000,
     strictPort: true,
     https: {
-      key: fs.readFileSync('cert/server.key'),
-      cert: fs.readFileSync('cert/server.crt'),
+      cert: fs.readFileSync('localme.crt'),
+      key: fs.readFileSync('localme.key'),
     },
   },
 })

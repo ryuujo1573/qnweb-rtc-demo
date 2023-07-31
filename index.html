@@ -8,6 +8,13 @@
   <link rel="stylesheet" href="https://fonts.loli.net/icon?family=Material+Icons" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>七牛 RTN Web Demo</title>
+  <script type="module">
+    if (['phone', 'ipod', 'android', 'ios', 'mbile', 'tablet'].some(t => navigator.userAgent.toLowerCase().includes(t))) {
+      import('https://unpkg.com/vconsole@3.14.7/dist/vconsole.min.js').then(() => {
+        new VConsole()
+      })
+    }
+  </script>
 </head>
 
 <body>

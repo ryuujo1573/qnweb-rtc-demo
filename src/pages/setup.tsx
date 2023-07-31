@@ -1,4 +1,5 @@
-import { Box, Button, Link, buttonClasses, useTheme } from '@mui/material'
+import { Box, Button, Link } from '@mui/material'
+import { buttonClasses, useTheme } from '@mui/material/'
 import { useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 

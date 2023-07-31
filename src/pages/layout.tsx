@@ -8,7 +8,6 @@ import {
 } from '@mui/icons-material'
 import {
   Box,
-  buttonBaseClasses,
   Checkbox,
   Divider,
   Fade,
@@ -17,14 +16,18 @@ import {
   InputAdornment,
   Link,
   MenuItem,
-  paperClasses,
-  svgIconClasses,
   SwipeableDrawer,
   TextField,
   ToggleButton,
+  ToggleButtonGroup,
   Typography,
-  useTheme,
 } from '@mui/material'
+import {
+  buttonBaseClasses,
+  paperClasses,
+  svgIconClasses,
+  useTheme,
+} from '@mui/material/'
 import QNRTC from 'qnweb-rtc'
 import { MutableRefObject, Suspense, useRef, useState } from 'react'
 import { Outlet, useOutletContext } from 'react-router'
@@ -39,6 +42,7 @@ import {
 import { updateUserId } from '../features/identitySlice'
 import { success } from '../features/messageSlice'
 import {
+  TransportPolicy,
   isCameraPreset,
   isScreenPreset,
   save,
@@ -79,6 +83,10 @@ export default function Layout() {
     microphoneMuted,
     neverPrompt,
     showProfile,
+    transportPolicy,
+    simulcast,
+    reconnectTimes,
+    requestTimeout,
   } = useSettings()
   const { userId } = useAppSelector((s) => s.identity)
 
@@ -228,7 +236,7 @@ export default function Layout() {
             </ToggleButtonGroup>
           </SectionFragment> */}
           <SectionFragment title="默认操作">
-            <Box display="flex" flexDirection="column">
+            <Box display="flex" flexDirection="column" gap={1}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -262,7 +270,6 @@ export default function Layout() {
                 }
                 label="跳过入会时设备检查"
               />
-
               <FormControlLabel
                 control={
                   <Checkbox
@@ -274,6 +281,67 @@ export default function Layout() {
                 }
                 label="显示媒体详细信息"
               />
+              <ToggleButtonGroup
+                title="媒体传输"
+                fullWidth
+                color="primary"
+                size="medium"
+                value={transportPolicy}
+                exclusive
+                onChange={(_, newValue) => {
+                  if (newValue == null) return
+                  dispatch(
+                    save({
+                      transportPolicy: newValue as TransportPolicy,
+                    }),
+                  )
+                }}
+              >
+                <ToggleButton value="preferUdp" aria-label="prefer UDP">
+                  优先 UDP
+                </ToggleButton>
+                <ToggleButton value="forceTcp" aria-label="force TCP">
+                  强制 TCP
+                </ToggleButton>
+                <ToggleButton value="forceUdp" aria-label="force UDP">
+                  强制 UDP
+                </ToggleButton>
+              </ToggleButtonGroup>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={simulcast}
+                    onChange={(_, v) => {
+                      dispatch(
+                        save({
+                          simulcast: v,
+                        }),
+                      )
+                    }}
+                  />
+                }
+                label="开启多流组播 (Simulcast)"
+              />
+              <TextField
+                label="最大重连次数"
+                variant="outlined"
+                placeholder={'' + reconnectTimes}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value)
+                  if (isNaN(v)) return
+                  dispatch(save({ reconnectTimes: v }))
+                }}
+              ></TextField>
+              <TextField
+                label="单次等待重连时间 (ms)"
+                variant="outlined"
+                placeholder={'' + requestTimeout}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value)
+                  if (isNaN(v)) return
+                  dispatch(save({ requestTimeout: v }))
+                }}
+              ></TextField>
             </Box>
           </SectionFragment>
           <SectionFragment title="应用设置">

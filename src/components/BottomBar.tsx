@@ -82,11 +82,11 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
   const mobile = isMobile()
 
   const bottomBarTimeout = 3000
-  const resetButtomBarClosing = useDebounce(onClose, bottomBarTimeout)
+  const resetBottomBarClosing = useDebounce(onClose, bottomBarTimeout)
 
   useEffect(() => {
     if (mobile) {
-      resetButtomBarClosing()
+      resetBottomBarClosing()
     }
   }, [mobile])
 
@@ -126,7 +126,7 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
         // if click whilst holding ctrl/cmd key,
         if (!evt[modKey]) {
           // the page won't navigate on dev purpose.
-          navigate(-1)
+          navigate('/')
         }
       } else {
         if (token != null) {
@@ -148,8 +148,6 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
       dispatch(removeTrack('screenAudio'))
     }
   }
-
-  const [camSwitching, setCamSwitching] = useState(false)
 
   return (
     <Grow in={open}>
@@ -213,11 +211,11 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
         </Tooltip>
         <Button
           variant="contained"
-          color={connected ? 'error' : 'success'}
+          color={connected ? 'error' : 'primary'}
           onClick={onCallButtonClick(connected)}
-          disabled={isConnecting || !neverPrompt}
+          disabled={isConnecting || (!neverPrompt && !connected)}
         >
-          {connected ? (
+          {connected || (!neverPrompt && !connected) ? (
             <CallEndRounded key="CallEndRounded" />
           ) : (
             <RestartAltRounded key="RestartAltRounded" />
@@ -238,16 +236,17 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
                 onSelect={async ({ deviceId }) => {
                   dispatch(setDefaultCamera(deviceId))
                   if (camTrack) {
-                    const parent = camTrack.mediaElement?.parentNode
+                    const parent = camTrack.mediaElement?.parentElement
                     // await camTrack?.switchCamera(deviceId)
-                    await camTrack?.switchCamera({
+                    await camTrack.switchCamera({
                       deviceId,
                       facingMode: undefined,
                     })
-                    parent &&
-                      (await camTrack.play(parent, {
+                    if (parent) {
+                      await camTrack.play(parent, {
                         mirror: camTrack.facingMode == 'user',
-                      }))
+                      })
+                    }
                   }
                 }}
               />
@@ -269,21 +268,18 @@ const BottomBar = function BottomBar({ open, onClose }: BottomBarProps) {
             <span>
               <IconButton
                 children={<CameraswitchRounded />}
-                disabled={!connected || !camTrack || camSwitching}
+                disabled={!connected || !camTrack}
                 onClick={async (e) => {
                   if (camTrack) {
-                    camSwitching || setCamSwitching(true)
                     const parent = camTrack.mediaElement?.parentElement
                     await camTrack.switchCamera()
-
-                    // TODO: fix flickering
-                    parent &&
-                      (await camTrack.play(parent, {
+                    if (parent) {
+                      await camTrack.play(parent, {
                         mirror: camTrack.facingMode == 'user',
-                      }))
-                    setCamSwitching(false)
-                    // debouncing
-                    resetButtomBarClosing()
+                      })
+                    }
+
+                    resetBottomBarClosing()
                   }
                 }}
               />

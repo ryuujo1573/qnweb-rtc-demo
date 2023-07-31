@@ -136,6 +136,12 @@ export const joinRoom = createAsyncThunk<void, string, ThunkAPI>(
     // }))
     // demo.forEach((u) => dispatch(userJoined(u)))
   },
+  {
+    condition: (_, { getState }) => {
+      const { connectionState } = getState().room
+      return connectionState === QState.DISCONNECTED
+    },
+  },
 )
 
 export const leaveRoom = createAsyncThunk<void, void, ThunkAPI>(
@@ -147,6 +153,15 @@ export const leaveRoom = createAsyncThunk<void, void, ThunkAPI>(
       // TODO: figure out possible errors
       dispatch(error({ message: e.message }))
     }
+  },
+  {
+    condition: (_, { getState }) => {
+      const { connectionState } = getState().room
+      return (
+        connectionState === QState.CONNECTED ||
+        connectionState === QState.RECONNECTED
+      )
+    },
   },
 )
 
@@ -368,13 +383,35 @@ const roomSlice = createSlice({
 
         user.trackIds = user.trackIds.filter((id) => !removals.includes(id))
       })
-      .addCase(leaveRoom.fulfilled, (state) => {
+      // .addCase(joinRoom.pending, (state, action) => {
+      //   const joinRoomToken = action.meta.arg
+      //   localStorage.setItem('joinRoomToken', joinRoomToken)
+      // })
+      .addCase(joinRoom.pending, (state) => {
         state.users = []
+        state.connectionState = QState.CONNECTING
+      })
+      .addCase(joinRoom.fulfilled, (state) => {
+        state.connectionState = QState.CONNECTED
+      })
+      .addCase(leaveRoom.pending, (state) => {
+        // use CONNECTING as pending flag
+        state.connectionState = QState.CONNECTING
+      })
+      .addCase(leaveRoom.fulfilled, (state) => {
+        state.connectionState = QState.DISCONNECTED
       })
       .addMatcher(
         // matcher can be defined inline as a type predicate function
         (action): action is RejectedAction => action.type.endsWith('/rejected'),
-        (state, action) => {},
+        (state, action) => {
+          console.warn(
+            `action "${action.type}" rejected:`,
+            action,
+            'state',
+            JSON.parse(JSON.stringify(state)),
+          )
+        },
       )
   },
 })

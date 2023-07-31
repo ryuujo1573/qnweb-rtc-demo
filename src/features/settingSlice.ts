@@ -24,6 +24,8 @@ export function isCameraPreset(str: string): str is CameraPreset {
 
 type PrimaryColors = Omit<typeof import('@mui/material/colors'), 'common'>
 
+export type TransportPolicy = 'forceUdp' | 'forceTcp' | 'preferUdp'
+
 export interface Settings {
   appId: string
   // 应用设置
@@ -31,6 +33,11 @@ export interface Settings {
   primaryColor: keyof PrimaryColors
   showProfile: boolean
   neverPrompt: boolean
+  // RTC 设置
+  transportPolicy: TransportPolicy
+  simulcast: boolean
+  reconnectTimes: number
+  requestTimeout: number
   // 摄像头
   cameraMuted: boolean
   facingMode: FacingMode
@@ -72,6 +79,10 @@ const keys = [
   'sei',
   'showProfile',
   'themeCode',
+  'transportPolicy',
+  'simulcast',
+  'reconnectTimes',
+  'requestTimeout',
 ] as const satisfies readonly (keyof Settings)[]
 
 function isStorageKey(key: string): key is (typeof keys)[number] {
@@ -79,12 +90,20 @@ function isStorageKey(key: string): key is (typeof keys)[number] {
 }
 
 for (const key of keys) {
-  Object.defineProperty(storage, key, {
-    get() {
-      const item = localStorage.getItem(key)
-      return item !== null ? JSON.parse(item) : undefined
-    },
-  })
+  Object.assign(
+    storage,
+    ...keys.map(() => {
+      const value = localStorage.getItem(key)
+      if (value === null) {
+        return {}
+      }
+      try {
+        return { [key]: JSON.parse(value) }
+      } catch {
+        return {}
+      }
+    }),
+  )
 }
 
 const defaultSettings: Settings = {
@@ -104,6 +123,10 @@ const defaultSettings: Settings = {
   microphoneMuted: false,
   neverPrompt: false,
   showProfile: false,
+  transportPolicy: 'preferUdp',
+  simulcast: false,
+  reconnectTimes: 3,
+  requestTimeout: 5 * 1000,
 }
 
 export const checkDevices = createAsyncThunk(
@@ -114,10 +137,27 @@ export const checkDevices = createAsyncThunk(
   },
 )
 
+function syncRtcConfig<T extends Settings>(state: T, payload: Partial<T>) {
+  console.log('SYNC: ', payload)
+
+  for (const key of [
+    'transportPolicy',
+    'simulcast',
+    'reconnectTimes',
+    'requestTimeout',
+  ] as const) {
+    if (key in payload && payload[key] != state[key]) {
+      QNRTC.setConfig({ [key]: payload[key] })
+    }
+  }
+}
+
 const initialState: Settings = {
   ...defaultSettings,
   ...storage,
 }
+
+syncRtcConfig(defaultSettings, storage)
 
 // 应当保存的设置
 type SolidSettings = Pick<Partial<Settings>, (typeof keys)[number]>
@@ -132,13 +172,15 @@ export const settingSlice = createSlice({
     changeColor: (state, { payload }: PayloadAction<keyof PrimaryColors>) => {
       state.primaryColor = payload
     },
-    update: (state, { payload }: PayloadAction<Partial<Settings>>) => {
+    update(state, { payload }: PayloadAction<Partial<Settings>>) {
+      syncRtcConfig(state, payload)
+
       return {
         ...state,
         ...payload,
       }
     },
-    save: (state, { payload }: PayloadAction<SolidSettings>) => {
+    save(state, { payload }: PayloadAction<SolidSettings>) {
       for (const key of Object.keys(payload)) {
         if (isStorageKey(key)) {
           localStorage.setItem(
@@ -147,6 +189,7 @@ export const settingSlice = createSlice({
           )
         }
       }
+      syncRtcConfig(state, payload)
 
       return {
         ...state,
