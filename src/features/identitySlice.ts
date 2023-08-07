@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
+import { joinRoom } from './roomSlice'
 
 export interface IdentityState {
   userId: string | null
@@ -28,6 +29,11 @@ export const identitySlice = createSlice({
     updateUserIdFromToken: (state, { payload }: PayloadAction<string>) => {
       state.userId = payload
     },
+  },
+  extraReducers(builder) {
+    builder.addCase(joinRoom.rejected, (state, action) => {
+      state.token = null
+    })
   },
 })
 

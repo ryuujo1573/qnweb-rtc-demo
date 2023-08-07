@@ -383,10 +383,6 @@ const roomSlice = createSlice({
 
         user.trackIds = user.trackIds.filter((id) => !removals.includes(id))
       })
-      // .addCase(joinRoom.pending, (state, action) => {
-      //   const joinRoomToken = action.meta.arg
-      //   localStorage.setItem('joinRoomToken', joinRoomToken)
-      // })
       .addCase(joinRoom.pending, (state) => {
         state.users = []
         state.connectionState = QState.CONNECTING
